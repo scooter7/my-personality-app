@@ -54,7 +54,7 @@ export default function QuizClient() {
       if (newSelection.length > maxSelections) {
         return prev; // Or show an error message
       }
-      return { ...prev, [questionkey]: newSelection };
+      return { ...prev, [questionKey]: newSelection };
     });
   };
   
