@@ -1,5 +1,3 @@
-// lib/utils.ts
-
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import {
@@ -32,10 +30,10 @@ export interface Answers {
   selected_image_q8: string;
   least_represented_images_q9: string[];
   selected_modes_q10: string[];
-  location: string;
-  collegeType: string;
-  collegeSize: string;
-  state: string;
+  location: string;       // "in-state" or "out-of-state"
+  collegeType: string;    // e.g., "Public" or "Private" or "No Preference"
+  collegeSize: string;    // e.g., "2,500 or less", "2,501-7,500", "7,501+"
+  state: string;          // Two-letter state code for in-state filter
 }
 
 export interface College {
@@ -47,90 +45,120 @@ export interface QuizResult {
   winner: string;
   persona: { name: string; description: string };
   scores: Record<string, number>;
+  motivators: Record<string, number>;
 }
 
 // --- UTILITY FUNCTIONS ---
 
 /**
- * Tailwind-friendly className merge.
- */
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(...inputs));
-}
-
-/**
- * Fisher–Yates shuffle.
+ * Shuffles an array in place and returns it.
  */
 export function shuffleArray<T>(array: T[]): T[] {
-  const arr = [...array];
-  for (let i = arr.length - 1; i > 0; i--) {
+  for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+    [array[i], array[j]] = [array[j], array[i]];
   }
-  return arr;
+  return array;
 }
 
 /**
- * Calculate color-based quiz results from the user’s answers.
+ * A utility function for combining Tailwind CSS classes.
  */
-export function calculateResults(answers: Answers): QuizResult {
-  // Initialize all possible colors to zero
-  const colorScores: Record<string, number> = {
-    Blue: 0,
-    Green: 0,
-    Maroon: 0,
-    Orange: 0,
-    Pink: 0,
-    Purple: 0,
-    Red: 0,
-    Silver: 0,
-    Yellow: 0,
-  };
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
-  // Helper to safely add/subtract
-  const adjust = (color: string, delta: number) => {
-    if (color in colorScores) colorScores[color] += delta;
-  };
+/**
+ * Calculates the personality results, including motivators, based on user answers.
+ */
+export function calculateResults(answers: Answers): QuizResult | null {
+  // Initialize color score counter
+  const scoreCounter: Record<string, number> = {};
+  Object.values(motivatorCategories)
+    .flat()
+    .forEach((color) => {
+      scoreCounter[color] = 0;
+    });
 
-  // 1st & 2nd trait rounds
-  answers.selected_traits_q1.forEach((t) => adjust(traitScoreMap[t], 1));
-  adjust(traitScoreMap[answers.selected_single_trait_q2], 1);
-  answers.least_represented_traits_q3.forEach((t) => adjust(traitScoreMap[t], -1));
+  // Trait rounds
+  answers.selected_traits_q1.forEach(
+    (trait) => scoreCounter[traitScoreMap[trait]]++
+  );
+  scoreCounter[traitScoreMap[answers.selected_single_trait_q2]]++;
+  answers.least_represented_traits_q3.forEach(
+    (trait) => scoreCounter[traitScoreMap[trait]]--
+  );
 
-  answers.selected_traits_q4.forEach((t) => adjust(traitScoreMap[t], 1));
-  adjust(traitScoreMap[answers.selected_single_trait_q5], 1);
-  answers.least_represented_traits_q6.forEach((t) => adjust(traitScoreMap[t], -1));
+  answers.selected_traits_q4.forEach(
+    (trait) => scoreCounter[traitScoreMap[trait]]++
+  );
+  scoreCounter[traitScoreMap[answers.selected_single_trait_q5]]++;
+  answers.least_represented_traits_q6.forEach(
+    (trait) => scoreCounter[traitScoreMap[trait]]--
+  );
 
   // Image rounds
-  answers.selected_images_q7.forEach((img) => adjust(imageScoreMap[img], 1));
-  adjust(imageScoreMap[answers.selected_image_q8], 1);
-  answers.least_represented_images_q9.forEach((img) => adjust(imageScoreMap[img], -1));
+  answers.selected_images_q7.forEach(
+    (image) => scoreCounter[imageScoreMap[image]]++
+  );
+  scoreCounter[imageScoreMap[answers.selected_image_q8]]++;
+  answers.least_represented_images_q9.forEach(
+    (image) => scoreCounter[imageScoreMap[image]]--
+  );
 
-  // Modes of Connection
-  answers.selected_modes_q10.forEach((mode) => adjust(traitScoreMap[mode], 1));
+  // Modes of connection
+  answers.selected_modes_q10.forEach(
+    (mode) => scoreCounter[traitScoreMap[mode]]++
+  );
 
-  // Determine the top two colors
-  const sorted = Object.entries(colorScores)
+  // Compute motivator totals
+  const motivatorScores: Record<string, number> = {
+    "Strength Motivator": motivatorCategories["Strength Motivator"].reduce(
+      (acc, color) => acc + scoreCounter[color],
+      0
+    ),
+    "Vitality Motivator": motivatorCategories["Vitality Motivator"].reduce(
+      (acc, color) => acc + scoreCounter[color],
+      0
+    ),
+    "Creativity Motivator": motivatorCategories["Creativity Motivator"].reduce(
+      (acc, color) => acc + scoreCounter[color],
+      0
+    ),
+  };
+
+  // Determine persona color combination
+  const topTwoColors = Object.entries(scoreCounter)
     .sort(([, a], [, b]) => b - a)
+    .slice(0, 2)
     .map(([color]) => color);
-  const [primary, secondary] = sorted;
 
-  // Lookup persona
-  const key = `${primary}-${secondary}`;
-  const persona = personaMap[key] ?? { name: "Unknown", description: "" };
+  let personaKey = `${topTwoColors[0]}-${topTwoColors[1]}`;
+  let persona = personaMap[personaKey];
+  if (!persona) {
+    personaKey = `${topTwoColors[1]}-${topTwoColors[0]}`;
+    persona = personaMap[personaKey];
+  }
+  if (!persona) {
+    persona = {
+      name: "Unique Combination",
+      description:
+        "Your unique combination of colors creates a special personality.",
+    };
+  }
 
   return {
-    winner: key,
+    winner: personaKey,
     persona,
-    scores: colorScores,
+    scores: scoreCounter,
+    motivators: motivatorScores,
   };
 }
 
 /**
- * Filter and randomly pick 3–5 colleges matching the user’s filters.
+ * Finds college matches purely based on filters: public/private, size, and state location.
  */
 export async function findCollegeMatches(
-  personaName: string,
   filters: {
     location: string;
     collegeType: string;
@@ -139,7 +167,7 @@ export async function findCollegeMatches(
   }
 ): Promise<College[]> {
   try {
-    // Convert raw JSON entries into typed records
+    // Parse raw JSON into typed records and convert population
     let pool: CollegeRecord[] = (collegesData as any[]).map((c) => ({
       name: c.name,
       website: c.website,
@@ -148,40 +176,40 @@ export async function findCollegeMatches(
       population: Number(c.population),
     }));
 
-    // In-state filter
+    // In-state vs out-of-state
     if (filters.location === "in-state" && filters.state) {
       pool = pool.filter((c) => c.state === filters.state);
     }
 
-    // By type
+    // Public/Private
     if (filters.collegeType && filters.collegeType !== "No Preference") {
       pool = pool.filter((c) => c.type === filters.collegeType);
     }
 
-    // By size range
+    // Size category
     if (filters.collegeSize) {
       const ranges: Record<string, { min: number; max: number }> = {
         "2,500 or less": { min: 0, max: 2500 },
         "2,501-7,500": { min: 2501, max: 7500 },
         "7,501+": { min: 7501, max: Infinity },
       };
-      const r = ranges[filters.collegeSize];
-      if (r) {
+      const range = ranges[filters.collegeSize];
+      if (range) {
         pool = pool.filter(
-          (c) => c.population >= r.min && c.population <= r.max
+          (c) => c.population >= range.min && c.population <= range.max
         );
       }
     }
 
-    // Pick 3–5 at random
+    // Randomly pick 3–5 from the filtered pool
     const shuffled = shuffleArray(pool);
     const count = Math.floor(Math.random() * 3) + 3;
-    return shuffled.slice(0, count).map((c) => ({
-      name: c.name,
-      url: c.website,
-    }));
-  } catch (err) {
-    console.error("Error finding college matches:", err);
+    return shuffled.slice(0, count).map((c) => ({ name: c.name, url: c.website }));
+  } catch (error) {
+    console.error("Error finding college matches:", error);
     return [];
   }
 }
+
+// Export all utilities
+export { shuffleArray, cn, calculateResults, findCollegeMatches };
