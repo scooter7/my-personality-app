@@ -27,11 +27,10 @@ const stateNameToAbbreviation = {
 
 // --- TYPE DEFINITIONS ---
 
-// This interface now correctly matches the JSON data structure.
 interface CollegeRecord {
   name: string;
   website: string;
-  state: string; // Corrected: The field is 'state', not 'ST'.
+  STATE: string; // **THE FIX: Changed to uppercase 'STATE' to match the JSON file**
   type: string;
   population: string;
 }
@@ -79,7 +78,6 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function calculateResults(answers: Answers): QuizResult | null {
-    // This function is unchanged and correct.
     const scoreCounter: { [color:string]: number } = {};
     Object.values(motivatorCategories).flat().forEach(color => (scoreCounter[color] = 0));
     answers.selected_traits_q1.forEach(trait => scoreCounter[traitScoreMap[trait]]++);
@@ -104,14 +102,13 @@ export function calculateResults(answers: Answers): QuizResult | null {
 
 export async function findCollegeMatches(filters: Answers): Promise<College[]> {
   try {
-    // This explicit type cast resolves the build error.
     let basePool: CollegeRecord[] = collegesData as unknown as CollegeRecord[];
 
     if (filters.location === "in-state" && filters.state) {
       const stateAbbreviation = stateNameToAbbreviation[filters.state as keyof typeof stateNameToAbbreviation];
       if (stateAbbreviation) {
-        // **THE FIX: Filtering by the correct 'state' field**
-        basePool = basePool.filter(college => college.state === stateAbbreviation);
+        // **THE FIX: Filtering by the correct uppercase 'STATE' field**
+        basePool = basePool.filter(college => college.STATE === stateAbbreviation);
       }
     }
 
