@@ -30,12 +30,11 @@ const stateNameToAbbreviation = {
 interface CollegeRecord {
   name: string;
   website: string;
-  state: string;
+  ST: string; // **THE FIX: Changed 'state' to 'ST' to match the JSON file**
   type: string;
   population: string;
 }
 
-// **Restoring the Answers interface here**
 export interface Answers {
   selected_traits_q1: string[];
   selected_single_trait_q2: string;
@@ -119,7 +118,8 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
     if (filters.location === "in-state" && filters.state) {
       const stateAbbreviation = stateNameToAbbreviation[filters.state as keyof typeof stateNameToAbbreviation];
       if (stateAbbreviation) {
-        basePool = basePool.filter(college => college.state === stateAbbreviation);
+        // **THE FIX: Filtering by the correct 'ST' field**
+        basePool = basePool.filter(college => college.ST === stateAbbreviation);
       }
     }
 
