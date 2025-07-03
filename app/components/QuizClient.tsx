@@ -22,7 +22,7 @@ import {
   findCollegeMatches,
   QuizResult,
   College,
-  Answers, // Correctly importing 'Answers' from utils
+  Answers,
 } from "@/lib/utils";
 
 
@@ -120,19 +120,18 @@ export default function QuizClient() {
     { key: "least_represented_images_q9", title: "Select 3 icons that least represent you.", type: "image-checkbox", options: remQ9, max: 3 },
     { key: "selected_modes_q10", title: "Which two 'Modes of Connection'?", type: "checkbox", options: shuffledData.modesOfConnection, max: 2 },
     { key: "location", title: "Where would you like to attend college?", type: "radio", options: collegeLocations },
-    { key: "state", title: "What is your primary state of residence?", type: "select", options: usStates, showIf: () => answers.location === 'in-state' },
+    // **THE FIX:** The 'showIf' condition has been removed from this line.
+    { key: "state", title: "What is your primary state of residence?", type: "select", options: usStates },
     { key: "collegeType", title: "What type of college?", type: "radio", options: collegeTypes },
     { key: "collegeSize", title: "What college size?", type: "radio", options: collegeSizes },
   ];
 
-  const visibleQuestions = questions.filter(q => !q.showIf || q.showIf());
-  const isLastQuestion = currentStep === visibleQuestions.length - 1;
+  const currentQuestion = questions[currentStep];
+  const isLastQuestion = currentStep === questions.length - 1;
 
   if (result) {
     return <Results result={result} collegeMatches={collegeMatches} />;
   }
-  
-  const currentQuestion = visibleQuestions[currentStep];
 
   return (
     <div className="w-full max-w-4xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl">
