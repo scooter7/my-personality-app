@@ -3,35 +3,35 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { fullName, email, affiliation, topTwoColors, personaName } = await request.json();
+    // Update to expect only the fields being sent from the frontend
+    const { personaName, state } = await request.json();
 
-    if (!fullName || !email || !affiliation || !topTwoColors || !personaName) {
-      throw new Error("Missing required submission fields.");
+    // Update the check for the required fields
+    if (!personaName || !state) {
+      throw new Error("Missing required submission fields: personaName and state are required.");
     }
 
-    // This is a good practice to ensure the table exists.
-    // In a production app, you might run this once separately.
+    // Update the database table schema
     await sql`
       CREATE TABLE IF NOT EXISTS quiz_submissions (
         id SERIAL PRIMARY KEY,
-        full_name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) NOT NULL,
-        affiliation VARCHAR(100),
-        top_two_colors VARCHAR(100),
         persona_name VARCHAR(100),
+        state VARCHAR(100),
         submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `;
 
+    // Update the INSERT statement to match the new schema
     await sql`
-      INSERT INTO quiz_submissions (full_name, email, affiliation, top_two_colors, persona_name)
-      VALUES (${fullName}, ${email}, ${affiliation}, ${topTwoColors.join(', ')}, ${personaName});
+      INSERT INTO quiz_submissions (persona_name, state)
+      VALUES (${personaName}, ${state});
     `;
 
     return NextResponse.json({ message: 'Submission Saved' }, { status: 200 });
   } catch (error) {
     console.error('API Error:', error);
-    // Avoid sending detailed error messages to the client in production
-    return NextResponse.json({ error: 'Failed to save submission.' }, { status: 500 });
+    // Send a more informative error message back for debugging
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    return NextResponse.json({ error: 'Failed to save submission.', details: errorMessage }, { status: 500 });
   }
 }
