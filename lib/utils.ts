@@ -128,25 +128,25 @@ export async function findCollegeMatches(
   filters: { location: string; collegeType: string; collegeSize: string; state: string }
 ): Promise<College[]> {
   try {
-    let collegePool = colleges;
+    let collegePool: any[] = colleges;
 
     // Filter by State
     if (filters.location === 'in-state' && filters.state) {
-        collegePool = collegePool.filter(college => college.State === filters.state);
+        collegePool = collegePool.filter(college => college.state === filters.state);
     }
     
     // Filter by College Type
     if (filters.collegeType && filters.collegeType !== 'No Preference') {
-        collegePool = collegePool.filter(college => college.Type === filters.collegeType);
+        collegePool = collegePool.filter(college => college.type === filters.collegeType);
     }
 
     // Filter by College Size
     if (filters.collegeSize) {
       const [min, max] = filters.collegeSize.replace(/,/g, '').split('-').map(Number);
       if (max) {
-        collegePool = collegePool.filter(college => college.Population >= min && college.Population <= max);
+        collegePool = collegePool.filter(college => college.population >= min && college.population <= max);
       } else {
-        collegePool = collegePool.filter(college => college.Population >= min);
+        collegePool = collegePool.filter(college => college.population >= min);
       }
     }
     
@@ -155,8 +155,8 @@ export async function findCollegeMatches(
     const selectionCount = Math.floor(Math.random() * 3) + 3; // 3 to 5 colleges
     
     return shuffled.slice(0, selectionCount).map(college => ({
-        name: college.Name,
-        url: college.URL
+        name: college.name,
+        url: college.url
     }));
 
   } catch (error) {
