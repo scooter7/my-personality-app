@@ -145,7 +145,8 @@ export async function findCollegeMatches(
         }
     }
     
-    const searchResults = await Google Search({queries:[query]});
+    // Placeholder for search results to allow the app to build
+    const searchResults: { results?: { title?: string, url?: string }[] }[] = [];
     
     if (searchResults && searchResults.length > 0 && searchResults[0].results) {
         return searchResults[0].results.slice(0, 5).map(result => ({
