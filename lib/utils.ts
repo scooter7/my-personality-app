@@ -210,6 +210,3 @@ export async function findCollegeMatches(
     return [];
   }
 }
-
-// Export all utilities
-export { shuffleArray, cn, calculateResults, findCollegeMatches };
