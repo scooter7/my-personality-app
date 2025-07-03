@@ -10,15 +10,13 @@ import collegesData from "../public/us-colleges-and-universities.json";
 
 // --- TYPE DEFINITIONS ---
 
-// This interface matches the structure of each object in your JSON file.
+// This interface now matches the flat structure of each object in your JSON file.
 interface CollegeRecord {
-  fields: {
-    name: string;
-    website: string;
-    state: string;
-    type: string;
-    population: number;
-  };
+  name: string;
+  website: string;
+  state: string;
+  type: string;
+  population: number;
 }
 
 export interface Answers {
@@ -192,20 +190,20 @@ export async function findCollegeMatches(
   }
 ): Promise<College[]> {
   try {
-    // Correctly use the imported 'collegesData' which is an array
+    // The type now correctly matches the imported data.
     let collegePool: CollegeRecord[] = collegesData;
 
     // Filter by State
     if (filters.location === "in-state" && filters.state) {
       collegePool = collegePool.filter(
-        (college) => college.fields && college.fields.state === filters.state
+        (college) => college.state === filters.state
       );
     }
 
     // Filter by College Type
     if (filters.collegeType && filters.collegeType !== "No Preference") {
       collegePool = collegePool.filter(
-        (college) => college.fields && college.fields.type === filters.collegeType
+        (college) => college.type === filters.collegeType
       );
     }
 
@@ -219,8 +217,8 @@ export async function findCollegeMatches(
       const range = sizeRanges[filters.collegeSize];
       if (range) {
         collegePool = collegePool.filter((college) => {
-          if (!college.fields || college.fields.population === undefined) return false;
-          const population = college.fields.population;
+          if (college.population === undefined) return false;
+          const population = college.population;
           return population >= range.min && population <= range.max;
         });
       }
@@ -230,9 +228,10 @@ export async function findCollegeMatches(
     const shuffled = shuffleArray(collegePool);
     const selectionCount = Math.floor(Math.random() * 3) + 3; // 3 to 5 colleges
 
+    // Access properties directly from the college object
     return shuffled.slice(0, selectionCount).map((college) => ({
-      name: college.fields.name,
-      url: college.fields.website,
+      name: college.name,
+      url: college.website,
     }));
   } catch (error) {
     console.error("Error finding college matches:", error);
