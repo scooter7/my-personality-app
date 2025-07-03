@@ -30,17 +30,27 @@ const stateNameToAbbreviation = {
 interface CollegeRecord {
   name: string;
   website: string;
-  state: string; // This is the state abbreviation (e.g., "IA")
+  state: string;
   type: string;
   population: string;
 }
 
+// **Restoring the Answers interface here**
 export interface Answers {
-  // ... (rest of the interface is unchanged)
+  selected_traits_q1: string[];
+  selected_single_trait_q2: string;
+  least_represented_traits_q3: string[];
+  selected_traits_q4: string[];
+  selected_single_trait_q5: string;
+  least_represented_traits_q6: string[];
+  selected_images_q7: string[];
+  selected_image_q8: string;
+  least_represented_images_q9: string[];
+  selected_modes_q10: string[];
   location: string;
   collegeType: string;
   collegeSize: string;
-  state: string; // This is the full state name (e.g., "Iowa")
+  state: string;
 }
 
 export interface College {
@@ -69,7 +79,6 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function calculateResults(answers: Answers): QuizResult | null {
-  // This function is unchanged
   const scoreCounter: { [color:string]: number } = {};
   Object.values(motivatorCategories).flat().forEach(color => (scoreCounter[color] = 0));
   answers.selected_traits_q1.forEach(trait => scoreCounter[traitScoreMap[trait]]++);
@@ -103,22 +112,11 @@ export function calculateResults(answers: Answers): QuizResult | null {
 }
 
 
-/**
- * Finds college matches from a local JSON file based on filters.
- * @param filters The user's filtering preferences.
- */
-export async function findCollegeMatches(filters: {
-  location: string;
-  collegeType: string;
-  collegeSize: string;
-  state: string; // The full state name from the form
-}): Promise<College[]> {
+export async function findCollegeMatches(filters: Answers): Promise<College[]> {
   try {
     let basePool: CollegeRecord[] = collegesData as CollegeRecord[];
 
-    // **Primary Filter: State**
     if (filters.location === "in-state" && filters.state) {
-      // Convert the full state name to its abbreviation before filtering
       const stateAbbreviation = stateNameToAbbreviation[filters.state as keyof typeof stateNameToAbbreviation];
       if (stateAbbreviation) {
         basePool = basePool.filter(college => college.state === stateAbbreviation);
@@ -129,7 +127,6 @@ export async function findCollegeMatches(filters: {
 
     let secondaryPool = [...basePool];
 
-    // Secondary Filters
     if (filters.collegeType && filters.collegeType !== "No Preference") {
       secondaryPool = secondaryPool.filter(college => college.type === filters.collegeType);
     }

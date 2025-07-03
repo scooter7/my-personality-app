@@ -22,27 +22,8 @@ import {
   findCollegeMatches,
   QuizResult,
   College,
-  // The 'Answers' type is now defined locally below
+  Answers, // Correctly importing 'Answers' from utils
 } from "@/lib/utils";
-
-
-// We are defining the Answers interface directly in this file to bypass the build error.
-export interface Answers {
-  selected_traits_q1: string[];
-  selected_single_trait_q2: string;
-  least_represented_traits_q3: string[];
-  selected_traits_q4: string[];
-  selected_single_trait_q5: string;
-  least_represented_traits_q6: string[];
-  selected_images_q7: string[];
-  selected_image_q8: string;
-  least_represented_images_q9: string[];
-  selected_modes_q10: string[];
-  location: string;
-  collegeType: string;
-  collegeSize: string;
-  state: string;
-}
 
 
 export default function QuizClient() {
