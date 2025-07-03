@@ -10,13 +10,13 @@ import collegesData from "../public/us-colleges-and-universities.json";
 
 // --- TYPE DEFINITIONS ---
 
-// This interface now matches the flat structure of each object in your JSON file.
+// This interface now matches the data types in your JSON file.
 interface CollegeRecord {
   name: string;
   website: string;
   state: string;
   type: string;
-  population: number;
+  population: string; // Changed to string to match JSON
 }
 
 export interface Answers {
@@ -176,7 +176,7 @@ export function calculateResults(answers: Answers): QuizResult | null {
 }
 
 /**
- * Finds college matches from a local JSON file based on persona and filters.
+ * Finds college matches from a local JSON file based on filters.
  * @param filters The user's filtering preferences.
  */
 export async function findCollegeMatches(
@@ -188,8 +188,7 @@ export async function findCollegeMatches(
   }
 ): Promise<College[]> {
   try {
-    // The type now correctly matches the imported data.
-    let collegePool: CollegeRecord[] = collegesData;
+    let collegePool: CollegeRecord[] = collegesData as CollegeRecord[];
 
     // Filter by State
     if (filters.location === "in-state" && filters.state) {
@@ -216,17 +215,17 @@ export async function findCollegeMatches(
       if (range) {
         collegePool = collegePool.filter((college) => {
           if (college.population === undefined) return false;
-          const population = college.population;
-          return population >= range.min && population <= range.max;
+          // Convert population to a number for comparison
+          const population = parseInt(college.population, 10);
+          return !isNaN(population) && population >= range.min && population <= range.max;
         });
       }
     }
 
     // Randomly select 3-5 colleges from the filtered pool
     const shuffled = shuffleArray(collegePool);
-    const selectionCount = Math.floor(Math.random() * 3) + 3; // 3 to 5 colleges
+    const selectionCount = Math.floor(Math.random() * 3) + 3;
 
-    // Access properties directly from the college object
     return shuffled.slice(0, selectionCount).map((college) => ({
       name: college.name,
       url: college.website,
