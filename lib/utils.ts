@@ -4,6 +4,7 @@ import {
   motivatorCategories,
   personaMap,
 } from "./data";
+import colleges from "../public/us-colleges-and-universities.json";
 
 // --- TYPE DEFINITIONS ---
 
@@ -118,8 +119,8 @@ export function calculateResults(answers: Answers): QuizResult | null {
 
 
 /**
- * Uses AI search to find college matches based on persona and filters.
- * @param personaName The user's persona name.
+ * Finds college matches from a local JSON file based on persona and filters.
+ * @param personaName The user's persona name (e.g., "Champion").
  * @param filters The user's filtering preferences.
  */
 export async function findCollegeMatches(
@@ -127,35 +128,36 @@ export async function findCollegeMatches(
   filters: { location: string; collegeType: string; collegeSize: string; state: string }
 ): Promise<College[]> {
   try {
-    let query = `top ${filters.collegeType !== 'No Preference' ? filters.collegeType.toLowerCase() : ''} universities`;
+    let collegePool = colleges;
 
-    if (filters.location === "in-state" && filters.state) {
-      query += ` in ${filters.state}`;
+    // Filter by State
+    if (filters.location === 'in-state' && filters.state) {
+        collegePool = collegePool.filter(college => college.State === filters.state);
+    }
+    
+    // Filter by College Type
+    if (filters.collegeType && filters.collegeType !== 'No Preference') {
+        collegePool = collegePool.filter(college => college.Type === filters.collegeType);
     }
 
-    query += ` for students interested in ${personaName.toLowerCase()}`;
-
+    // Filter by College Size
     if (filters.collegeSize) {
-        if (filters.collegeSize === "2,500 or less") {
-            query += " with enrollment under 2500";
-        } else if (filters.collegeSize === "2,501-7,500") {
-            query += " with enrollment between 2501 and 7500";
-        } else if (filters.collegeSize === "7,501+") {
-            query += " with enrollment over 7501";
-        }
+      const [min, max] = filters.collegeSize.replace(/,/g, '').split('-').map(Number);
+      if (max) {
+        collegePool = collegePool.filter(college => college.Population >= min && college.Population <= max);
+      } else {
+        collegePool = collegePool.filter(college => college.Population >= min);
+      }
     }
     
-    // This function will now return an empty array until a proper search API is implemented.
-    const searchResults: any[] = [];
+    // Randomly select 3-5 colleges from the filtered pool
+    const shuffled = shuffleArray(collegePool);
+    const selectionCount = Math.floor(Math.random() * 3) + 3; // 3 to 5 colleges
     
-    if (searchResults && searchResults.length > 0 && searchResults[0].results) {
-        return searchResults[0].results.slice(0, 5).map((result: any) => ({
-            name: result.title || 'Unknown College',
-            url: result.url || '#'
-        }));
-    }
-
-    return [];
+    return shuffled.slice(0, selectionCount).map(college => ({
+        name: college.Name,
+        url: college.URL
+    }));
 
   } catch (error) {
     console.error("Error finding college matches:", error);
