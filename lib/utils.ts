@@ -149,7 +149,7 @@ export async function findCollegeMatches(
     
     if (searchResults && searchResults.length > 0 && searchResults[0].results) {
         return searchResults[0].results.slice(0, 5).map(result => ({
-            name: result.source_title || 'Unknown College',
+            name: result.title || 'Unknown College',
             url: result.url || '#'
         }));
     }
