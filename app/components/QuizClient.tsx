@@ -185,4 +185,4 @@ export async function findCollegeMatches(
   return shuffled.slice(0, count).map((c) => ({ name: c.name, url: c.website }));
 }
 
-export { shuffleArray, cn, calculateResults, findCollegeMatches };
+
