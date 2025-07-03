@@ -1,21 +1,16 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-
-// FIX 1: Corrected path to the data file in the /lib directory.
-// Using the '@/' alias is a best practice and assumes it's configured to point to your project root.
 import {
   traitScoreMap,
   imageScoreMap,
   motivatorCategories,
   personaMap,
-} from "@/lib/data";
-
-// FIX 2: Corrected path to the JSON file after moving it to the /lib directory.
-import collegesData from "@/lib/us-colleges-and-universities.json";
+} from "./data";
+import collegesData from "../public/us-colleges-and-universities.json";
 
 // --- TYPE DEFINITIONS ---
 
-// Matches the flat JSON structure, with population as a number
+// This interface now matches the flat structure of each object in your JSON file.
 interface CollegeRecord {
   name: string;
   website: string;
@@ -49,148 +44,195 @@ export interface College {
 export interface QuizResult {
   winner: string;
   persona: { name: string; description: string };
-  scores: Record<string, number>;
-  motivators: Record<string, number>;
+  scores: { [color: string]: number };
 }
 
 // --- UTILITY FUNCTIONS ---
 
 /**
  * Shuffles an array in place and returns it.
+ * @param array The array to shuffle.
  */
 export function shuffleArray<T>(array: T[]): T[] {
-  const arr = [...array];
-  for (let i = arr.length - 1; i > 0; i--) {
+  for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+    [array[i], array[j]] = [array[j], array[i]];
   }
-  return arr;
+  return array;
 }
 
 /**
  * A utility function for combining Tailwind CSS classes.
+ * @param inputs The class values to merge.
  */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 /**
- * Calculates the personality results, including motivators, based on user answers.
+ * Calculates the personality results based on user answers.
+ * @param answers The user's selections from the quiz.
  */
-export function calculateResults(answers: Answers): QuizResult {
-  // Initialize color scores
-  const colorScores: Record<string, number> = {};
+export function calculateResults(answers: Answers): QuizResult | null {
+  const scoreCounter: { [color: string]: number } = {};
+
+  // Initialize scores
   Object.values(motivatorCategories)
     .flat()
     .forEach((color) => {
-      colorScores[color] = 0;
+      scoreCounter[color] = 0;
     });
 
-  // Tally trait rounds
-  answers.selected_traits_q1.forEach((t) => colorScores[traitScoreMap[t]]++);
-  colorScores[traitScoreMap[answers.selected_single_trait_q2]]++;
+  answers.selected_traits_q1.forEach(
+    (trait: string) => scoreCounter[traitScoreMap[trait]]++
+  );
+  scoreCounter[traitScoreMap[answers.selected_single_trait_q2]]++;
   answers.least_represented_traits_q3.forEach(
-    (t) => colorScores[traitScoreMap[t]]--
+    (trait: string) => scoreCounter[traitScoreMap[trait]]--
   );
-  answers.selected_traits_q4.forEach((t) => colorScores[traitScoreMap[t]]++);
-  colorScores[traitScoreMap[answers.selected_single_trait_q5]]++;
+  answers.selected_traits_q4.forEach(
+    (trait: string) => scoreCounter[traitScoreMap[trait]]++
+  );
+  scoreCounter[traitScoreMap[answers.selected_single_trait_q5]]++;
   answers.least_represented_traits_q6.forEach(
-    (t) => colorScores[traitScoreMap[t]]--
+    (trait: string) => scoreCounter[traitScoreMap[trait]]--
   );
-
-  // Tally image rounds
-  answers.selected_images_q7.forEach((img) => colorScores[imageScoreMap[img]]++);
-  colorScores[imageScoreMap[answers.selected_image_q8]]++;
+  answers.selected_images_q7.forEach(
+    (image: string) => scoreCounter[imageScoreMap[image]]++
+  );
+  scoreCounter[imageScoreMap[answers.selected_image_q8]]++;
   answers.least_represented_images_q9.forEach(
-    (img) => colorScores[imageScoreMap[img]]--
+    (image: string) => scoreCounter[imageScoreMap[image]]--
+  );
+  answers.selected_modes_q10.forEach(
+    (mode: string) => scoreCounter[traitScoreMap[mode]]++
   );
 
-  // Modes of connection
-  answers.selected_modes_q10.forEach((mode) => colorScores[traitScoreMap[mode]]++);
-
-  // Compute motivator totals
-  const motivators: Record<string, number> = {
+  const motivatorScores = {
     "Strength Motivator": motivatorCategories["Strength Motivator"].reduce(
-      (sum, c) => sum + colorScores[c],
+      (acc, color) => acc + scoreCounter[color],
       0
     ),
     "Vitality Motivator": motivatorCategories["Vitality Motivator"].reduce(
-      (sum, c) => sum + colorScores[c],
+      (acc, color) => acc + scoreCounter[color],
       0
     ),
     "Creativity Motivator": motivatorCategories["Creativity Motivator"].reduce(
-      (sum, c) => sum + colorScores[c],
+      (acc, color) => acc + scoreCounter[color],
       0
     ),
   };
 
-  // Determine top two color codes for persona key
-  const topTwo = Object.entries(colorScores)
+  const sortedMotivators = Object.entries(motivatorScores).sort((a, b) => {
+    if (b[1] !== a[1]) {
+      return b[1] - a[1];
+    }
+    // Tie-breaking logic
+    if (
+      a[0] === "Vitality Motivator" &&
+      (b[0] === "Strength Motivator" || b[0] === "Creativity Motivator")
+    )
+      return -1;
+    if (
+      b[0] === "Vitality Motivator" &&
+      (a[0] === "Strength Motivator" || a[0] === "Creativity Motivator")
+    )
+      return 1;
+    if (a[0] === "Strength Motivator" && b[0] === "Creativity Motivator")
+      return -1;
+    if (b[0] === "Strength Motivator" && a[0] === "Creativity Motivator")
+      return 1;
+    return 0;
+  });
+
+  const winner = sortedMotivators[0][0];
+
+  const topTwoColors = Object.entries(scoreCounter)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 2)
-    .map(([color]) => color);
+    .map((entry) => entry[0]);
 
-  let key = `${topTwo[0]}-${topTwo[1]}`;
-  let persona = personaMap[key];
+  let personaKey = `${topTwoColors[0]}-${topTwoColors[1]}`;
+  let persona = personaMap[personaKey];
+
   if (!persona) {
-    key = `${topTwo[1]}-${topTwo[0]}`;
-    persona = personaMap[key];
+    personaKey = `${topTwoColors[1]}-${topTwoColors[0]}`;
+    persona = personaMap[personaKey];
   }
+
   if (!persona) {
-    persona = { name: "Unique Combination", description: "" };
+    persona = {
+      name: "Unique Combination",
+      description:
+        "Your unique combination of colors creates a special personality.",
+    };
   }
 
   return {
-    winner: key,
+    winner,
     persona,
-    scores: colorScores,
-    motivators,
+    scores: scoreCounter,
   };
 }
 
 /**
- * Finds college matches based purely on filters.
+ * Finds college matches from a local JSON file based on persona and filters.
+ * @param filters The user's filtering preferences.
  */
-export async function findCollegeMatches(filters: {
-  location: string;
-  collegeType: string;
-  collegeSize: string;
-  state: string;
-}): Promise<College[]> {
-  // This now directly uses the imported JSON data.
-  let pool: CollegeRecord[] = (collegesData as any[]).map((c) => ({
-    name: c.name,
-    website: c.website,
-    state: c.state,
-    type: c.type,
-    population: Number(c.population),
-  }));
-
-  // In-state / out-of-state filter
-  if (filters.location === "in-state" && filters.state) {
-    pool = pool.filter((c) => c.state === filters.state);
+export async function findCollegeMatches(
+  filters: {
+    location: string;
+    collegeType: string;
+    collegeSize: string;
+    state: string;
   }
+): Promise<College[]> {
+  try {
+    // The type now correctly matches the imported data.
+    let collegePool: CollegeRecord[] = collegesData;
 
-  // Public / Private filter
-  if (filters.collegeType !== "No Preference") {
-    pool = pool.filter((c) => c.type === filters.collegeType);
+    // Filter by State
+    if (filters.location === "in-state" && filters.state) {
+      collegePool = collegePool.filter(
+        (college) => college.state === filters.state
+      );
+    }
+
+    // Filter by College Type
+    if (filters.collegeType && filters.collegeType !== "No Preference") {
+      collegePool = collegePool.filter(
+        (college) => college.type === filters.collegeType
+      );
+    }
+
+    // Filter by College Size
+    if (filters.collegeSize) {
+      const sizeRanges: { [key: string]: { min: number; max: number } } = {
+        "2,500 or less": { min: 0, max: 2500 },
+        "2,501-7,500": { min: 2501, max: 7500 },
+        "7,501+": { min: 7501, max: Infinity },
+      };
+      const range = sizeRanges[filters.collegeSize];
+      if (range) {
+        collegePool = collegePool.filter((college) => {
+          if (college.population === undefined) return false;
+          const population = college.population;
+          return population >= range.min && population <= range.max;
+        });
+      }
+    }
+
+    // Randomly select 3-5 colleges from the filtered pool
+    const shuffled = shuffleArray(collegePool);
+    const selectionCount = Math.floor(Math.random() * 3) + 3; // 3 to 5 colleges
+
+    // Access properties directly from the college object
+    return shuffled.slice(0, selectionCount).map((college) => ({
+      name: college.name,
+      url: college.website,
+    }));
+  } catch (error) {
+    console.error("Error finding college matches:", error);
+    return [];
   }
-
-  // Size filter
-  if (filters.collegeSize) {
-    const ranges: Record<string, { min: number; max: number }> = {
-      "2,500 or less": { min: 0, max: 2500 },
-      "2,501-7,500": { min: 2501, max: 7500 },
-      "7,501+": { min: 7501, max: Infinity },
-    };
-    const range = ranges[filters.collegeSize];
-    pool = pool.filter(
-      (c) => c.population >= range.min && c.population <= range.max
-    );
-  }
-
-  // Randomly select 3–5
-  const shuffled = shuffleArray(pool);
-  const count = Math.floor(Math.random() * 3) + 3;
-  return shuffled.slice(0, count).map((c) => ({ name: c.name, url: c.website }));
 }
