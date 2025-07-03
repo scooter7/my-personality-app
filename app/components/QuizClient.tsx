@@ -15,7 +15,13 @@ import {
   collegeSizes,
   usStates
 } from "@/lib/data";
-import { shuffleArray, calculateResults, findCollegeMatches, QuizResult, College } from "@/lib/utils";
+import {
+  shuffleArray,
+  calculateResults,
+  findCollegeMatches,
+  QuizResult,
+  College
+} from "@/lib/utils";
 
 // Define the structure for all answers
 type Answers = {
@@ -25,8 +31,17 @@ type Answers = {
 export default function QuizClient() {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({
-    q1: [], q3: [], q4: [], q6: [], q7: [], q9: [], q10: [],
-    location: "No preference", collegeType: "No Preference", collegeSize: "", state: ""
+    q1: [],
+    q3: [],
+    q4: [],
+    q6: [],
+    q7: [],
+    q9: [],
+    q10: [],
+    location: "No preference",
+    collegeType: "No Preference",
+    collegeSize: "",
+    state: "",
   });
   const [shuffledData, setShuffledData] = useState({
     traitsQ1: [] as string[],
@@ -39,7 +54,7 @@ export default function QuizClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Shuffle the arrays once on component mount
+  // Shuffle once on mount
   useEffect(() => {
     setShuffledData({
       traitsQ1: shuffleArray([...traitsQ1]),
@@ -49,33 +64,36 @@ export default function QuizClient() {
     });
   }, []);
 
-  const handleSelect = (questionKey: string, value: string, maxSelections: number) => {
-    setAnswers(prev => {
-      const currentSelection = (prev[questionKey] as string[] | undefined) || [];
-      const newSelection = currentSelection.includes(value)
-        ? currentSelection.filter(item => item !== value)
-        : [...currentSelection, value];
-
-      if (newSelection.length > maxSelections) {
-        return prev; // Or show an error message
-      }
-      return { ...prev, [questionKey]: newSelection };
+  const handleSelect = (
+    questionKey: string,
+    value: string,
+    maxSelections: number
+  ) => {
+    setAnswers((prev) => {
+      const current = (prev[questionKey] as string[]) || [];
+      const newSel = current.includes(value)
+        ? current.filter((v) => v !== value)
+        : [...current, value];
+      if (newSel.length > maxSelections) return prev;
+      return { ...prev, [questionKey]: newSel };
     });
   };
 
   const handleSingleSelect = (questionKey: string, value: string) => {
-    setAnswers(prev => ({ ...prev, [questionKey]: value }));
+    setAnswers((prev) => ({ ...prev, [questionKey]: value }));
   };
 
   const handleTextInput = (questionKey: string, value: string) => {
-     setAnswers(prev => ({ ...prev, [questionKey]: value }));
+    setAnswers((prev) => ({ ...prev, [questionKey]: value }));
   };
 
-  const nextStep = () => setCurrentStep(prev => prev + 1);
-  const prevStep = () => setCurrentStep(prev => prev - 1);
+  const nextStep = () => setCurrentStep((p) => p + 1);
+  const prevStep = () => setCurrentStep((p) => p - 1);
 
   const handleSubmit = async () => {
     setIsLoading(true);
+
+    // Build typed Answers for calculateResults
     const quizResults = calculateResults({
       selected_traits_q1: answers.q1 as string[],
       selected_single_trait_q2: answers.q2 as string,
@@ -95,7 +113,9 @@ export default function QuizClient() {
 
     if (quizResults) {
       setResult(quizResults);
-      const matches = await findCollegeMatches(quizResults.persona.name, {
+
+      // <-- FIXED: only pass the filters object, no persona name -->
+      const matches = await findCollegeMatches({
         location: answers.location as string,
         collegeType: answers.collegeType as string,
         collegeSize: answers.collegeSize as string,
@@ -103,58 +123,143 @@ export default function QuizClient() {
       });
       setCollegeMatches(matches);
 
-      // Also submit the data to your backend
+      // Optionally send to your backend
       setIsSubmitting(true);
       try {
-        await fetch('/api/submit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        await fetch("/api/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-              fullName: answers.fullName,
-              email: answers.email,
-              affiliation: answers.affiliation,
-              state: answers.state,
-              topTwoColors: [quizResults.persona.name.split('-')[0], quizResults.persona.name.split('-')[1]],
-              personaName: quizResults.persona.name
+            fullName: answers.fullName,
+            email: answers.email,
+            affiliation: answers.affiliation,
+            state: answers.state,
+            topTwoColors: [
+              quizResults.winner.split("-")[0],
+              quizResults.winner.split("-")[1],
+            ],
+            personaName: quizResults.winner,
           }),
         });
-      } catch (error) {
-          console.error("Failed to submit results:", error);
+      } catch (err) {
+        console.error("Failed to submit results:", err);
       } finally {
-          setIsSubmitting(false);
+        setIsSubmitting(false);
       }
     }
+
     setIsLoading(false);
-    nextStep(); // Move to the results view
+    nextStep();
   };
 
-  const remainingTraitsQ3 = shuffledData.traitsQ1.filter(t => !(answers.q1 as string[]).includes(t));
-  const remainingTraitsQ6 = shuffledData.traitsQ4.filter(t => !(answers.q4 as string[]).includes(t));
-  const remainingImagesQ9 = shuffledData.imageFiles.filter(img => !(answers.q7 as string[]).includes(img));
+  // Helpers to compute remaining options
+  const remainingTraitsQ3 = shuffledData.traitsQ1.filter(
+    (t) => !(answers.q1 as string[]).includes(t)
+  );
+  const remainingTraitsQ6 = shuffledData.traitsQ4.filter(
+    (t) => !(answers.q4 as string[]).includes(t)
+  );
+  const remainingImagesQ9 = shuffledData.imageFiles.filter(
+    (img) => !(answers.q7 as string[]).includes(img)
+  );
 
+  // The full question list
   const questions = [
-    { key: 'q1', title: "Here is a list of 9 traits. Please select exactly 3 that best represent you.", type: 'checkbox', options: shuffledData.traitsQ1, max: 3 },
-    { key: 'q2', title: "Of the 3 traits you selected, which one is most like you?", type: 'radio', options: answers.q1 as string[] },
-    { key: 'q3', title: "Now, select the 3 traits that least represent you.", type: 'checkbox', options: remainingTraitsQ3, max: 3 },
-    { key: 'q4', title: "Here is a new list of 9 traits. Select 3 that best represent you.", type: 'checkbox', options: shuffledData.traitsQ4, max: 3 },
-    { key: 'q5', title: "Of the 3 traits you selected, which one is most like you?", type: 'radio', options: answers.q4 as string[] },
-    { key: 'q6', title: "Now, select the 3 traits that least represent you.", type: 'checkbox', options: remainingTraitsQ6, max: 3 },
-    { key: 'q7', title: "View these 9 icon groups. Select the 3 that best represent you.", type: 'image-checkbox', options: shuffledData.imageFiles, max: 3 },
-    { key: 'q8', title: "Of the 3 icon groups you selected, which one is most like you?", type: 'image-radio', options: answers.q7 as string[] },
-    { key: 'q9', title: "Now, select the 3 icon groups that least represent you.", type: 'image-checkbox', options: remainingImagesQ9, max: 3 },
-    { key: 'q10', title: "Which two 'Modes of Connection' sound most like you?", type: 'checkbox', options: shuffledData.modesOfConnection, max: 2 },
-    { key: 'location', title: "Where would you like to attend college?", type: 'radio', options: collegeLocations },
-    { key: 'collegeType', title: "What type of college would you like to attend?", type: 'radio', options: collegeTypes },
-    { key: 'collegeSize', title: "What size of college is best?", type: 'radio', options: collegeSizes },
-    { key: 'fullName', title: "Full Name", type: 'text' },
-    { key: 'email', title: "Email Address", type: 'email' },
-    { key: 'affiliation', title: "Affiliation", type: 'select', options: affiliations },
-    { key: 'state', title: "State", type: 'select', options: usStates },
+    {
+      key: "q1",
+      title: "Here is a list of 9 traits. Please select exactly 3 that best represent you.",
+      type: "checkbox",
+      options: shuffledData.traitsQ1,
+      max: 3,
+    },
+    {
+      key: "q2",
+      title: "Of the 3 traits you selected, which one is most like you?",
+      type: "radio",
+      options: answers.q1 as string[],
+    },
+    {
+      key: "q3",
+      title: "Now, select the 3 traits that least represent you.",
+      type: "checkbox",
+      options: remainingTraitsQ3,
+      max: 3,
+    },
+    {
+      key: "q4",
+      title: "Here is a new list of 9 traits. Select 3 that best represent you.",
+      type: "checkbox",
+      options: shuffledData.traitsQ4,
+      max: 3,
+    },
+    {
+      key: "q5",
+      title: "Of the 3 traits you selected, which one is most like you?",
+      type: "radio",
+      options: answers.q4 as string[],
+    },
+    {
+      key: "q6",
+      title: "Now, select the 3 traits that least represent you.",
+      type: "checkbox",
+      options: remainingTraitsQ6,
+      max: 3,
+    },
+    {
+      key: "q7",
+      title: "View these 9 icon groups. Select the 3 that best represent you.",
+      type: "image-checkbox",
+      options: shuffledData.imageFiles,
+      max: 3,
+    },
+    {
+      key: "q8",
+      title: "Of the 3 icon groups you selected, which one is most like you?",
+      type: "image-radio",
+      options: answers.q7 as string[],
+    },
+    {
+      key: "q9",
+      title: "Now, select the 3 icon groups that least represent you.",
+      type: "image-checkbox",
+      options: remainingImagesQ9,
+      max: 3,
+    },
+    {
+      key: "q10",
+      title: "Which two 'Modes of Connection' sound most like you?",
+      type: "checkbox",
+      options: shuffledData.modesOfConnection,
+      max: 2,
+    },
+    {
+      key: "location",
+      title: "Where would you like to attend college?",
+      type: "radio",
+      options: collegeLocations,
+    },
+    {
+      key: "collegeType",
+      title: "What type of college would you like to attend?",
+      type: "radio",
+      options: collegeTypes,
+    },
+    {
+      key: "collegeSize",
+      title: "What size of college is best?",
+      type: "radio",
+      options: collegeSizes,
+    },
+    { key: "fullName", title: "Full Name", type: "text" },
+    { key: "email", title: "Email Address", type: "email" },
+    { key: "affiliation", title: "Affiliation", type: "select", options: affiliations },
+    { key: "state", title: "State", type: "select", options: usStates },
   ];
 
   const currentQuestion = questions[currentStep];
   const isLastQuestion = currentStep === questions.length - 1;
 
+  // If you've reached the results page, show it
   if (result) {
     return <Results result={result} collegeMatches={collegeMatches} />;
   }
@@ -173,10 +278,18 @@ export default function QuizClient() {
             <Question
               question={currentQuestion}
               value={answers[currentQuestion.key]}
-              onCheckboxChange={(val) => handleSelect(currentQuestion.key, val, currentQuestion.max || 1)}
-              onRadioChange={(val) => handleSingleSelect(currentQuestion.key, val)}
-              onTextChange={(val) => handleTextInput(currentQuestion.key, val)}
-              onSelectChange={(val) => handleSingleSelect(currentQuestion.key, val)}
+              onCheckboxChange={(val) =>
+                handleSelect(currentQuestion.key, val, currentQuestion.max || 1)
+              }
+              onRadioChange={(val) =>
+                handleSingleSelect(currentQuestion.key, val)
+              }
+              onTextChange={(val) =>
+                handleTextInput(currentQuestion.key, val)
+              }
+              onSelectChange={(val) =>
+                handleSingleSelect(currentQuestion.key, val)
+              }
             />
           )}
         </motion.div>
@@ -197,7 +310,7 @@ export default function QuizClient() {
             disabled={isLoading || isSubmitting}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400"
           >
-            {isLoading ? "Calculating..." : (isSubmitting ? "Submitting..." : "Submit")}
+            {isLoading ? "Calculating..." : isSubmitting ? "Submitting..." : "Submit"}
           </button>
         ) : (
           <button
