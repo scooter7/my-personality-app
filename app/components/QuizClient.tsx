@@ -1,188 +1,300 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+"use client";
+
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import Question from "./Question";
+import Results from "./Results";
+
 import {
-  traitScoreMap,
-  imageScoreMap,
-  motivatorCategories,
-  personaMap,
-} from "./data";
-import collegesData from "../public/us-colleges-and-universities.json";
+  traitsQ1,
+  traitsQ4,
+  imageFiles,
+  modesOfConnection,
+  affiliations,
+  collegeLocations,
+  collegeTypes,
+  collegeSizes,
+  usStates,
+} from "@/lib/data";
 
-// --- TYPE DEFINITIONS ---
+import {
+  shuffleArray,
+  calculateResults,
+  findCollegeMatches,
+  QuizResult,
+  College,
+  Answers, // Import the updated Answers interface
+} from "@/lib/utils";
 
-// Matches the flat JSON structure, with population as a number
-interface CollegeRecord {
-  name: string;
-  website: string;
-  state: string;
-  type: string;
-  population: number;
-}
+export default function QuizClient() {
+  const [currentStep, setCurrentStep] = useState(0);
+  // Updated state to match the Answers interface in utils.ts
+  const [answers, setAnswers] = useState<Answers>({
+    selected_traits_q1: [],
+    selected_single_trait_q2: "",
+    least_represented_traits_q3: [],
+    selected_traits_q4: [],
+    selected_single_trait_q5: "",
+    least_represented_traits_q6: [],
+    selected_images_q7: [],
+    selected_image_q8: "",
+    least_represented_images_q9: [],
+    selected_modes_q10: [],
+    location: "No Preference",
+    collegeType: "No Preference",
+    collegeSize: "",
+    state: "",
+  });
 
-export interface Answers {
-  selected_traits_q1: string[];
-  selected_single_trait_q2: string;
-  least_represented_traits_q3: string[];
-  selected_traits_q4: string[];
-  selected_single_trait_q5: string;
-  least_represented_traits_q6: string[];
-  selected_images_q7: string[];
-  selected_image_q8: string;
-  least_represented_images_q9: string[];
-  selected_modes_q10: string[];
-  location: string;
-  collegeType: string;
-  collegeSize: string;
-  state: string;
-}
+  const [shuffledData, setShuffledData] = useState({
+    traitsQ1: [] as string[],
+    traitsQ4: [] as string[],
+    imageFiles: [] as string[],
+    modesOfConnection: [] as string[],
+  });
 
-export interface College {
-  name: string;
-  url: string;
-}
+  const [result, setResult] = useState<QuizResult | null>(null);
+  const [collegeMatches, setCollegeMatches] = useState<College[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-export interface QuizResult {
-  winner: string;
-  persona: { name: string; description: string };
-  scores: Record<string, number>;
-  motivators: Record<string, number>;
-}
-
-// --- UTILITY FUNCTIONS ---
-
-/**
- * Shuffles an array in place and returns it.
- */
-export function shuffleArray<T>(array: T[]): T[] {
-  const arr = [...array];
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-/**
- * A utility function for combining Tailwind CSS classes.
- */
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-/**
- * Calculates the personality results, including motivators, based on user answers.
- */
-export function calculateResults(answers: Answers): QuizResult {
-  // Initialize color scores
-  const colorScores: Record<string, number> = {};
-  Object.values(motivatorCategories)
-    .flat()
-    .forEach((color) => {
-      colorScores[color] = 0;
+  // Shuffle data only once on component mount
+  useEffect(() => {
+    setShuffledData({
+      traitsQ1: shuffleArray([...traitsQ1]),
+      traitsQ4: shuffleArray([...traitsQ4]),
+      imageFiles: shuffleArray([...imageFiles]),
+      modesOfConnection: shuffleArray([...modesOfConnection]),
     });
+  }, []);
 
-  // Tally trait rounds
-  answers.selected_traits_q1.forEach((t) => colorScores[traitScoreMap[t]]++);
-  colorScores[traitScoreMap[answers.selected_single_trait_q2]]++;
-  answers.least_represented_traits_q3.forEach((t) => colorScores[traitScoreMap[t]]--);
-  answers.selected_traits_q4.forEach((t) => colorScores[traitScoreMap[t]]++);
-  colorScores[traitScoreMap[answers.selected_single_trait_q5]]++;
-  answers.least_represented_traits_q6.forEach((t) => colorScores[traitScoreMap[t]]--);
+  // Generic handler for multi-select (checkbox) questions
+  const handleSelect = (key: keyof Answers, val: string, max: number) => {
+    setAnswers((prev) => {
+      const currentSelection = (prev[key] as string[]) || [];
+      const newSelection = currentSelection.includes(val)
+        ? currentSelection.filter((item) => item !== val)
+        : [...currentSelection, val];
 
-  // Tally image rounds
-  answers.selected_images_q7.forEach((img) => colorScores[imageScoreMap[img]]++);
-  colorScores[imageScoreMap[answers.selected_image_q8]]++;
-  answers.least_represented_images_q9.forEach((img) => colorScores[imageScoreMap[img]]--);
-
-  // Modes of connection
-  answers.selected_modes_q10.forEach((mode) => colorScores[traitScoreMap[mode]]++);
-
-  // Compute motivator totals
-  const motivators: Record<string, number> = {
-    "Strength Motivator": motivatorCategories["Strength Motivator"].reduce(
-      (sum, c) => sum + colorScores[c],
-      0
-    ),
-    "Vitality Motivator": motivatorCategories["Vitality Motivator"].reduce(
-      (sum, c) => sum + colorScores[c],
-      0
-    ),
-    "Creativity Motivator": motivatorCategories["Creativity Motivator"].reduce(
-      (sum, c) => sum + colorScores[c],
-      0
-    ),
+      if (newSelection.length > max) return prev;
+      return { ...prev, [key]: newSelection };
+    });
   };
 
-  // Determine top two color codes for persona key
-  const topTwo = Object.entries(colorScores)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 2)
-    .map(([color]) => color);
-
-  let key = `${topTwo[0]}-${topTwo[1]}`;
-  let persona = personaMap[key];
-  if (!persona) {
-    key = `${topTwo[1]}-${topTwo[0]}`;
-    persona = personaMap[key];
-  }
-  if (!persona) {
-    persona = { name: "Unique Combination", description: "" };
-  }
-
-  return {
-    winner: key,
-    persona,
-    scores: colorScores,
-    motivators,
+  // Generic handler for single-select (radio, text, select) questions
+  const handleSingle = (key: keyof Answers, val: string) => {
+    setAnswers((prev) => ({ ...prev, [key]: val }));
   };
+
+  const nextStep = () => setCurrentStep((s) => s + 1);
+  const prevStep = () => setCurrentStep((s) => s - 1);
+
+  const handleSubmit = async () => {
+    setIsLoading(true);
+
+    // calculateResults now directly accepts the answers object
+    const quizResult = calculateResults(answers);
+
+    if (quizResult) {
+      setResult(quizResult);
+
+      // findCollegeMatches no longer needs personaName
+      const matches = await findCollegeMatches({
+        location: answers.location,
+        collegeType: answers.collegeType,
+        collegeSize: answers.collegeSize,
+        state: answers.state,
+      });
+      setCollegeMatches(matches);
+
+      // Optionally POST to backend
+      setIsSubmitting(true);
+      try {
+        await fetch("/api/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            // Send the calculated winner from the results
+            personaName: quizResult.winner,
+            // Include other form data as needed
+            state: answers.state,
+          }),
+        });
+      } catch (e) {
+        console.error("Submission failed", e);
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+
+    setIsLoading(false);
+    nextStep();
+  };
+
+  // Update remaining options based on the new answer keys
+  const remQ3 = shuffledData.traitsQ1.filter(
+    (t) => !answers.selected_traits_q1.includes(t)
+  );
+  const remQ6 = shuffledData.traitsQ4.filter(
+    (t) => !answers.selected_traits_q4.includes(t)
+  );
+  const remQ9 = shuffledData.imageFiles.filter(
+    (i) => !answers.selected_images_q7.includes(i)
+  );
+
+  // Update question definitions to use the new answer keys
+  const questions = [
+    {
+      key: "selected_traits_q1",
+      title: "Select 3 traits that best represent you.",
+      type: "checkbox",
+      options: shuffledData.traitsQ1,
+      max: 3,
+    },
+    {
+      key: "selected_single_trait_q2",
+      title: "Which of those 3 is most like you?",
+      type: "radio",
+      options: answers.selected_traits_q1,
+    },
+    {
+      key: "least_represented_traits_q3",
+      title: "Select 3 traits that least represent you.",
+      type: "checkbox",
+      options: remQ3,
+      max: 3,
+    },
+    {
+      key: "selected_traits_q4",
+      title: "Select 3 new traits.",
+      type: "checkbox",
+      options: shuffledData.traitsQ4,
+      max: 3,
+    },
+    {
+      key: "selected_single_trait_q5",
+      title: "Which of those 3 is most like you?",
+      type: "radio",
+      options: answers.selected_traits_q4,
+    },
+    {
+      key: "least_represented_traits_q6",
+      title: "Select 3 traits that least represent you.",
+      type: "checkbox",
+      options: remQ6,
+      max: 3,
+    },
+    {
+      key: "selected_images_q7",
+      title: "Select 3 icons that best represent you.",
+      type: "image-checkbox",
+      options: shuffledData.imageFiles,
+      max: 3,
+    },
+    {
+      key: "selected_image_q8",
+      title: "Which of those 3 is most like you?",
+      type: "image-radio",
+      options: answers.selected_images_q7,
+    },
+    {
+      key: "least_represented_images_q9",
+      title: "Select 3 icons that least represent you.",
+      type: "image-checkbox",
+      options: remQ9,
+      max: 3,
+    },
+    {
+      key: "selected_modes_q10",
+      title: "Which two 'Modes of Connection'?",
+      type: "checkbox",
+      options: shuffledData.modesOfConnection,
+      max: 2,
+    },
+    {
+      key: "location",
+      title: "Where would you like to attend college?",
+      type: "radio",
+      options: collegeLocations,
+    },
+    {
+      key: "collegeType",
+      title: "What type of college?",
+      type: "radio",
+      options: collegeTypes,
+    },
+    {
+      key: "collegeSize",
+      title: "What college size?",
+      type: "radio",
+      options: collegeSizes,
+    },
+    {
+      key: "state",
+      title: "What is your primary state of residence?",
+      type: "select",
+      options: usStates,
+    },
+  ];
+
+  if (result) {
+    return <Results result={result} collegeMatches={collegeMatches} />;
+  }
+
+  const currentQuestion = questions[currentStep];
+  const isLastQuestion = currentStep === questions.length - 1;
+
+  return (
+    <div className="w-full max-w-4xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentStep}
+          initial={{ opacity: 0, x: 50 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -50 }}
+          transition={{ duration: 0.3 }}
+        >
+          {currentQuestion && (
+            <Question
+              question={currentQuestion}
+              value={answers[currentQuestion.key as keyof Answers]}
+              onCheckboxChange={(v) => handleSelect(currentQuestion.key as keyof Answers,v,currentQuestion.max || 1)}
+              onRadioChange={(v) => handleSingle(currentQuestion.key as keyof Answers, v)}
+              onTextChange={(v) => handleSingle(currentQuestion.key as keyof Answers, v)}
+              onSelectChange={(v) => handleSingle(currentQuestion.key as keyof Answers, v)}
+            />
+          )}
+        </motion.div>
+      </AnimatePresence>
+      <div className="mt-8 flex justify-between">
+        <button
+          onClick={prevStep}
+          disabled={currentStep === 0}
+          className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50"
+        >
+          Back
+        </button>
+        {isLastQuestion ? (
+          <button
+            onClick={handleSubmit}
+            disabled={isLoading || isSubmitting}
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400"
+          >
+            {isLoading
+              ? "Calculating..."
+              : isSubmitting
+              ? "Submitting..."
+              : "See My Results"}
+          </button>
+        ) : (
+          <button
+            onClick={nextStep}
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Next
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
-
-/**
- * Finds college matches based purely on filters.
- */
-export async function findCollegeMatches(
-  filters: {
-    location: string;
-    collegeType: string;
-    collegeSize: string;
-    state: string;
-  }
-): Promise<College[]> {
-  let pool: CollegeRecord[] = (collegesData as any[]).map((c) => ({
-    name: c.name,
-    website: c.website,
-    state: c.state,
-    type: c.type,
-    population: Number(c.population),
-  }));
-
-  // In-state / out-of-state filter
-  if (filters.location === "in-state" && filters.state) {
-    pool = pool.filter((c) => c.state === filters.state);
-  }
-
-  // Public / Private filter
-  if (filters.collegeType !== "No Preference") {
-    pool = pool.filter((c) => c.type === filters.collegeType);
-  }
-
-  // Size filter
-  if (filters.collegeSize) {
-    const ranges: Record<string, { min: number; max: number }> = {
-      "2,500 or less": { min: 0, max: 2500 },
-      "2,501-7,500": { min: 2501, max: 7500 },
-      "7,501+": { min: 7501, max: Infinity },
-    };
-    const range = ranges[filters.collegeSize];
-    pool = pool.filter(
-      (c) => c.population >= range.min && c.population <= range.max
-    );
-  }
-
-  // Randomly select 3–5
-  const shuffled = shuffleArray(pool);
-  const count = Math.floor(Math.random() * 3) + 3;
-  return shuffled.slice(0, count).map((c) => ({ name: c.name, url: c.website }));
-}
-
-
