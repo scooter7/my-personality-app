@@ -26,13 +26,13 @@ const stateNameToAbbreviation = {
 
 
 // --- TYPE DEFINITIONS ---
-
+// **THE FIX: All properties are now uppercase to match the JSON file**
 interface CollegeRecord {
-  name: string;
-  website: string;
-  STATE: string; // **THE FIX: Changed to uppercase 'STATE' to match the JSON file**
-  type: string;
-  population: string;
+  NAME: string;
+  WEBSITE: string;
+  STATE: string;
+  TYPE: string;
+  POPULATION: string;
 }
 
 export interface Answers {
@@ -107,7 +107,7 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
     if (filters.location === "in-state" && filters.state) {
       const stateAbbreviation = stateNameToAbbreviation[filters.state as keyof typeof stateNameToAbbreviation];
       if (stateAbbreviation) {
-        // **THE FIX: Filtering by the correct uppercase 'STATE' field**
+        // Filtering by the correct uppercase 'STATE' field
         basePool = basePool.filter(college => college.STATE === stateAbbreviation);
       }
     }
@@ -117,7 +117,8 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
     let secondaryPool = [...basePool];
 
     if (filters.collegeType && filters.collegeType !== "No Preference") {
-      secondaryPool = secondaryPool.filter(college => college.type === filters.collegeType);
+      // Filtering by the correct uppercase 'TYPE' field
+      secondaryPool = secondaryPool.filter(college => college.TYPE === filters.collegeType);
     }
 
     if (filters.collegeSize) {
@@ -125,7 +126,8 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
       const range = sizeRanges[filters.collegeSize as keyof typeof sizeRanges];
       if (range) {
         secondaryPool = secondaryPool.filter(college => {
-          const population = parseInt(college.population, 10);
+          // Filtering by the correct uppercase 'POPULATION' field
+          const population = parseInt(college.POPULATION, 10);
           return !isNaN(population) && population >= range.min && population <= range.max;
         });
       }
@@ -137,8 +139,9 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
     const finalSelectionCount = Math.min(selectionCount, shuffled.length);
 
     return shuffled.slice(0, finalSelectionCount).map((college) => ({
-      name: college.name,
-      url: college.website,
+      // Mapping from the correct uppercase 'NAME' and 'WEBSITE' fields
+      name: college.NAME,
+      url: college.WEBSITE,
     }));
 
   } catch (error) {
