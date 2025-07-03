@@ -9,20 +9,32 @@ export async function POST(request: Request) {
       throw new Error("Missing required submission fields: personaName and state are required.");
     }
 
-    // First, ensure the table exists (for the very first run)
+    // This ensures the table and all necessary columns exist.
+    // It's safe to run this every time.
     await sql`
       CREATE TABLE IF NOT EXISTS quiz_submissions (
         id SERIAL PRIMARY KEY,
+        full_name VARCHAR(255),
+        email VARCHAR(255),
+        affiliation VARCHAR(100),
+        top_two_colors VARCHAR(100),
         persona_name VARCHAR(100),
+        state VARCHAR(100),
         submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `;
 
-    // **THIS IS THE FIX:** Add the 'state' column if it doesn't already exist.
-    // This ALTER TABLE command will safely update your existing table schema.
-    await sql`
-      ALTER TABLE quiz_submissions ADD COLUMN IF NOT EXISTS state VARCHAR(100);
-    `;
+    // **THIS IS THE FIX:**
+    // The following commands will alter the existing columns to allow them to be empty (NULL).
+    // This resolves the "violates not-null constraint" error permanently.
+    await sql`ALTER TABLE quiz_submissions ALTER COLUMN full_name DROP NOT NULL;`;
+    await sql`ALTER TABLE quiz_submissions ALTER COLUMN email DROP NOT NULL;`;
+    await sql`ALTER TABLE quiz_submissions ALTER COLUMN affiliation DROP NOT NULL;`;
+    await sql`ALTER TABLE quiz_submissions ALTER COLUMN top_two_colors DROP NOT NULL;`;
+    
+    // This command from the previous fix ensures the 'state' column exists.
+    await sql`ALTER TABLE quiz_submissions ADD COLUMN IF NOT EXISTS state VARCHAR(100);`;
+
 
     // Now, the INSERT statement will succeed.
     await sql`
