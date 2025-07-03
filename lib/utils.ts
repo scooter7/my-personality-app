@@ -4,6 +4,7 @@ import {
   motivatorCategories,
   personaMap,
 } from "./data";
+import { Google Search } from 'Google Search'; // This import is for illustrative purposes
 
 // --- TYPE DEFINITIONS ---
 
@@ -118,7 +119,7 @@ export function calculateResults(answers: Answers): QuizResult | null {
 
 
 /**
- * Uses AI search to find college matches based on persona and filters.
+ * Uses AI to find college matches based on persona and filters.
  * @param personaName The user's persona name.
  * @param filters The user's filtering preferences.
  */
@@ -127,14 +128,24 @@ export async function findCollegeMatches(
   filters: { location: string; collegeType: string; collegeSize: string; state: string }
 ): Promise<College[]> {
   try {
-    let query = `top ${filters.collegeType !== 'No Preference' ? filters.collegeType.toLowerCase() : ''} universities`;
+    const persona = personaMap[
+      Object.keys(personaMap).find(key => personaMap[key].name === personaName) || ''
+    ];
+
+    let query = `top universities for ${personaName} students`;
+
+    if(persona) {
+        query += ` interested in ${persona.description.toLowerCase()}`;
+    }
+    
+    if (filters.collegeType && filters.collegeType !== 'No Preference') {
+      query += ` that are ${filters.collegeType.toLowerCase()}`;
+    }
 
     if (filters.location === "in-state" && filters.state) {
       query += ` in ${filters.state}`;
     }
-
-    query += ` for students interested in ${personaName.toLowerCase()}`;
-
+    
     if (filters.collegeSize) {
         if (filters.collegeSize === "2,500 or less") {
             query += " with enrollment under 2500";
@@ -144,13 +155,12 @@ export async function findCollegeMatches(
             query += " with enrollment over 7501";
         }
     }
-    
-    // Placeholder for search results to allow the app to build
-    const searchResults: { results?: { title?: string, url?: string }[] }[] = [];
+
+    const searchResults = await Google Search({queries: [query]});
     
     if (searchResults && searchResults.length > 0 && searchResults[0].results) {
         return searchResults[0].results.slice(0, 5).map(result => ({
-            name: result.title || 'Unknown College',
+            name: result.source_title || 'Unknown College',
             url: result.url || '#'
         }));
     }
