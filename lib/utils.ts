@@ -27,7 +27,7 @@ const stateNameToAbbreviation = {
 
 // --- TYPE DEFINITIONS ---
 interface CollegeRecord {
-  NAME: string; // **THE FIX: 'NAME' property has been restored**
+  NAME: string;
   WEBSITE: string;
   STATE: string;
   TYPE: string;
@@ -101,35 +101,46 @@ export function calculateResults(answers: Answers): QuizResult | null {
 
 export async function findCollegeMatches(filters: Answers): Promise<College[]> {
   try {
-    let basePool: CollegeRecord[] = collegesData as unknown as CollegeRecord[];
+    let collegePool: CollegeRecord[] = collegesData as unknown as CollegeRecord[];
 
+    // **Primary Filter: State**
     if (filters.location === "in-state" && filters.state) {
       const stateAbbreviation = stateNameToAbbreviation[filters.state as keyof typeof stateNameToAbbreviation];
       if (stateAbbreviation) {
-        basePool = basePool.filter(college => college.STATE === stateAbbreviation);
+        collegePool = collegePool.filter(college => college.STATE === stateAbbreviation);
       }
     }
 
-    if (basePool.length === 0) return [];
+    // Create a fallback pool that is only filtered by state
+    const stateFallbackPool = [...collegePool];
 
-    let secondaryPool = [...basePool];
+    // **Secondary Filters**
 
     if (filters.collegeType && filters.collegeType !== "No Preference") {
-      secondaryPool = secondaryPool.filter(college => college.TYPE === filters.collegeType);
+        const typeFiltered = collegePool.filter(college => college.TYPE === filters.collegeType);
+        if (typeFiltered.length > 0) {
+            collegePool = typeFiltered;
+        }
     }
 
     if (filters.collegeSize) {
       const sizeRanges = { "2,500 or less": { min: 0, max: 2500 }, "2,501-7,500": { min: 2501, max: 7500 }, "7,501+": { min: 7501, max: Infinity } };
       const range = sizeRanges[filters.collegeSize as keyof typeof sizeRanges];
       if (range) {
-        secondaryPool = secondaryPool.filter(college => {
+        const sizeFiltered = collegePool.filter(college => {
           const population = parseInt(college.POPULATION, 10);
           return !isNaN(population) && population >= range.min && population <= range.max;
         });
+        if (sizeFiltered.length > 0) {
+            collegePool = sizeFiltered;
+        }
       }
     }
+    
+    // **Final Selection**
+    // If the secondary filters resulted in an empty list, use the state-only fallback.
+    const finalPool = collegePool.length > 0 ? collegePool : stateFallbackPool;
 
-    const finalPool = secondaryPool.length > 0 ? secondaryPool : basePool;
     const shuffled = shuffleArray(finalPool);
     const selectionCount = Math.floor(Math.random() * 3) + 3;
     const finalSelectionCount = Math.min(selectionCount, shuffled.length);
