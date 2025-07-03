@@ -142,11 +142,17 @@ export async function findCollegeMatches(
 
     // Filter by College Size
     if (filters.collegeSize) {
-      const [min, max] = filters.collegeSize.replace(/,/g, '').split('-').map(Number);
-      if (max) {
-        collegePool = collegePool.filter(college => college.population >= min && college.population <= max);
-      } else {
-        collegePool = collegePool.filter(college => college.population >= min);
+      const sizeRanges: { [key: string]: { min: number, max: number } } = {
+        "2,500 or less": { min: 0, max: 2500 },
+        "2,501-7,500": { min: 2501, max: 7500 },
+        "7,501+": { min: 7501, max: Infinity },
+      };
+      const range = sizeRanges[filters.collegeSize];
+      if (range) {
+        collegePool = collegePool.filter(college => {
+          const population = parseInt(college.population, 10);
+          return !isNaN(population) && population >= range.min && population <= range.max;
+        });
       }
     }
     
