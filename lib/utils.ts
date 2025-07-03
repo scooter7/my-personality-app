@@ -145,8 +145,8 @@ export async function findCollegeMatches(
             query += " with enrollment over 7501";
         }
     }
-    
-    const searchResults = await Google Search(queries=[query]);
+
+    const searchResults = await Google Search({queries:[query]});
     
     if (searchResults && searchResults.length > 0 && searchResults[0].results) {
         return searchResults[0].results.slice(0, 5).map(result => ({
