@@ -4,9 +4,19 @@ import {
   motivatorCategories,
   personaMap,
 } from "./data";
-import colleges from "../public/us-colleges-and-universities.json";
+import collegesData from "../public/us-colleges-and-universities.json";
 
 // --- TYPE DEFINITIONS ---
+
+interface CollegeRecord {
+    fields: {
+        name: string;
+        website: string;
+        state: string;
+        type: string;
+        population: number;
+    }
+}
 
 export interface Answers {
   selected_traits_q1: string[];
@@ -128,16 +138,16 @@ export async function findCollegeMatches(
   filters: { location: string; collegeType: string; collegeSize: string; state: string }
 ): Promise<College[]> {
   try {
-    let collegePool: any[] = colleges;
+    let collegePool: any[] = (colleges as any).records;
 
     // Filter by State
     if (filters.location === 'in-state' && filters.state) {
-        collegePool = collegePool.filter(college => college.fields.state === filters.state);
+        collegePool = collegePool.filter(college => college.fields && college.fields.state === filters.state);
     }
     
     // Filter by College Type
     if (filters.collegeType && filters.collegeType !== 'No Preference') {
-        collegePool = collegePool.filter(college => college.fields.type === filters.collegeType);
+        collegePool = collegePool.filter(college => college.fields && college.fields.type === filters.collegeType);
     }
 
     // Filter by College Size
@@ -150,6 +160,7 @@ export async function findCollegeMatches(
       const range = sizeRanges[filters.collegeSize];
       if (range) {
         collegePool = collegePool.filter(college => {
+          if(!college.fields) return false;
           const population = parseInt(college.fields.population, 10);
           return !isNaN(population) && population >= range.min && population <= range.max;
         });
