@@ -10,6 +10,10 @@ import {
   imageFiles,
   modesOfConnection,
   affiliations,
+  collegeLocations,
+  collegeTypes,
+  collegeSizes,
+  usStates
 } from "@/lib/data";
 import { shuffleArray, calculateResults, findCollegeMatches, QuizResult, College } from "@/lib/utils";
 
@@ -21,7 +25,8 @@ type Answers = {
 export default function QuizClient() {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({
-    q1: [], q3: [], q4: [], q6: [], q7: [], q9: [], q10: []
+    q1: [], q3: [], q4: [], q6: [], q7: [], q9: [], q10: [],
+    location: "No preference", collegeType: "No Preference", collegeSize: "", state: ""
   });
   const [shuffledData, setShuffledData] = useState({
     traitsQ1: [] as string[],
@@ -57,11 +62,11 @@ export default function QuizClient() {
       return { ...prev, [questionKey]: newSelection };
     });
   };
-  
+
   const handleSingleSelect = (questionKey: string, value: string) => {
     setAnswers(prev => ({ ...prev, [questionKey]: value }));
   };
-  
+
   const handleTextInput = (questionKey: string, value: string) => {
      setAnswers(prev => ({ ...prev, [questionKey]: value }));
   };
@@ -82,13 +87,22 @@ export default function QuizClient() {
       selected_image_q8: answers.q8 as string,
       least_represented_images_q9: answers.q9 as string[],
       selected_modes_q10: answers.q10 as string[],
+      location: answers.location as string,
+      collegeType: answers.collegeType as string,
+      collegeSize: answers.collegeSize as string,
+      state: answers.state as string,
     });
 
     if (quizResults) {
       setResult(quizResults);
-      const matches = await findCollegeMatches(quizResults.topTwoColors[0], quizResults.topTwoColors[1]);
+      const matches = await findCollegeMatches(quizResults.persona.name, {
+        location: answers.location as string,
+        collegeType: answers.collegeType as string,
+        collegeSize: answers.collegeSize as string,
+        state: answers.state as string,
+      });
       setCollegeMatches(matches);
-      
+
       // Also submit the data to your backend
       setIsSubmitting(true);
       try {
@@ -96,10 +110,11 @@ export default function QuizClient() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-              fullName: answers.q11,
-              email: answers.q12,
-              affiliation: answers.q13,
-              topTwoColors: quizResults.topTwoColors,
+              fullName: answers.fullName,
+              email: answers.email,
+              affiliation: answers.affiliation,
+              state: answers.state,
+              topTwoColors: [quizResults.persona.name.split('-')[0], quizResults.persona.name.split('-')[1]],
               personaName: quizResults.persona.name
           }),
         });
@@ -128,11 +143,15 @@ export default function QuizClient() {
     { key: 'q8', title: "Of the 3 icon groups you selected, which one is most like you?", type: 'image-radio', options: answers.q7 as string[] },
     { key: 'q9', title: "Now, select the 3 icon groups that least represent you.", type: 'image-checkbox', options: remainingImagesQ9, max: 3 },
     { key: 'q10', title: "Which two 'Modes of Connection' sound most like you?", type: 'checkbox', options: shuffledData.modesOfConnection, max: 2 },
-    { key: 'q11', title: "Full Name", type: 'text' },
-    { key: 'q12', title: "Email Address", type: 'email' },
-    { key: 'q13', title: "Affiliation", type: 'select', options: affiliations },
+    { key: 'location', title: "Where would you like to attend college?", type: 'radio', options: collegeLocations },
+    { key: 'collegeType', title: "What type of college would you like to attend?", type: 'radio', options: collegeTypes },
+    { key: 'collegeSize', title: "What size of college is best?", type: 'radio', options: collegeSizes },
+    { key: 'fullName', title: "Full Name", type: 'text' },
+    { key: 'email', title: "Email Address", type: 'email' },
+    { key: 'affiliation', title: "Affiliation", type: 'select', options: affiliations },
+    { key: 'state', title: "State", type: 'select', options: usStates },
   ];
-  
+
   const currentQuestion = questions[currentStep];
   const isLastQuestion = currentStep === questions.length - 1;
 
@@ -164,25 +183,25 @@ export default function QuizClient() {
       </AnimatePresence>
 
       <div className="mt-8 flex justify-between items-center">
-        <button 
-          onClick={prevStep} 
+        <button
+          onClick={prevStep}
           disabled={currentStep === 0}
           className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Back
         </button>
-        
+
         {isLastQuestion ? (
-          <button 
-            onClick={handleSubmit} 
+          <button
+            onClick={handleSubmit}
             disabled={isLoading || isSubmitting}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400"
           >
             {isLoading ? "Calculating..." : (isSubmitting ? "Submitting..." : "Submit")}
           </button>
         ) : (
-          <button 
-            onClick={nextStep} 
+          <button
+            onClick={nextStep}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Next

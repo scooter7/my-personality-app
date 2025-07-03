@@ -6,6 +6,17 @@ export const traitsQ4 = ["Influential", "Adventurous", "Tough", "Expressive", "P
 export const imageFiles = ["OrangeSet.jpg", "BrownSet.jpg", "RedSet.jpg", "YellowSet.jpg", "PurpleSet.jpg", "BlueSet.jpg", "GreenSet.jpg", "PinkSet.jpg", "BlackSet.jpg"];
 export const modesOfConnection = ["Achieve With Me", "Explore With Me", "Strive With Me", "Create With Me", "Refine With Me", "Care With Me", "Enjoy With Me", "Defy With Me", "Invent With Me"];
 export const affiliations = ["Admitted Student", "Current Student", "Faculty/Staff", "Alum"];
+export const collegeLocations = ["In-state", "Out-of-state", "No preference"];
+export const collegeTypes = ["Public", "Private", "Denominational", "No Preference"];
+export const collegeSizes = ["2,500 or less", "2,501-7,500", "7,501+"];
+export const usStates = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", "Florida", "Georgia",
+  "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland",
+  "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey",
+  "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
+  "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
+];
+
 
 // Mappings for Scoring Logic
 export const traitScoreMap: { [key: string]: string } = {
@@ -22,8 +33,12 @@ export const imageScoreMap: { [key: string]: string } = {
   "PurpleSet.jpg": "Purple", "BlueSet.jpg": "Blue", "GreenSet.jpg": "Green", "PinkSet.jpg": "Pink", "BlackSet.jpg": "Silver"
 };
 
-// Tie-breaking priority
-export const colorPriority: string[] = ["Pink", "Blue", "Silver", "Yellow", "Maroon", "Red", "Orange", "Green", "Purple"];
+// Motivator Categories
+export const motivatorCategories = {
+  "Strength Motivator": ["Silver", "Blue", "Maroon"],
+  "Vitality Motivator": ["Pink", "Purple", "Red"],
+  "Creativity Motivator": ["Green", "Orange", "Yellow"],
+};
 
 // Persona Name and Description Mapping
 // Using a "Primary-Secondary" key format for easy lookup.

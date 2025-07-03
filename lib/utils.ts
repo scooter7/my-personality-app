@@ -1,8 +1,9 @@
 import {
   traitScoreMap,
   imageScoreMap,
-  colorPriority,
+  motivatorCategories,
   personaMap,
+  Google Search
 } from "./data";
 
 // --- TYPE DEFINITIONS ---
@@ -18,18 +19,19 @@ export interface Answers {
   selected_image_q8: string;
   least_represented_images_q9: string[];
   selected_modes_q10: string[];
+  location: string;
+  collegeType: string;
+  collegeSize: string;
+  state: string;
 }
 
 export interface College {
   name: string;
   url: string;
-  topColor: string;
-  topSupportingColor: string;
-  additionalSupportingColor: string;
 }
 
 export interface QuizResult {
-  topTwoColors: string[];
+  winner: string;
   persona: { name: string; description: string; };
   scores: { [color: string]: number };
 }
@@ -54,8 +56,10 @@ export function shuffleArray<T>(array: T[]): T[] {
  */
 export function calculateResults(answers: Answers): QuizResult | null {
   const scoreCounter: { [color: string]: number } = {};
-  colorPriority.forEach(color => {
-    scoreCounter[color] = 3;
+
+  // Initialize scores
+  Object.values(motivatorCategories).flat().forEach(color => {
+      scoreCounter[color] = 0;
   });
 
   answers.selected_traits_q1.forEach((trait: string) => scoreCounter[traitScoreMap[trait]]++);
@@ -69,20 +73,34 @@ export function calculateResults(answers: Answers): QuizResult | null {
   answers.least_represented_images_q9.forEach((image: string) => scoreCounter[imageScoreMap[image]]--);
   answers.selected_modes_q10.forEach((mode: string) => scoreCounter[traitScoreMap[mode]]++);
 
-  const sortedScores = Object.entries(scoreCounter).sort((a, b) => {
+  const motivatorScores = {
+    "Strength Motivator": motivatorCategories["Strength Motivator"].reduce((acc, color) => acc + scoreCounter[color], 0),
+    "Vitality Motivator": motivatorCategories["Vitality Motivator"].reduce((acc, color) => acc + scoreCounter[color], 0),
+    "Creativity Motivator": motivatorCategories["Creativity Motivator"].reduce((acc, color) => acc + scoreCounter[color], 0),
+  };
+
+  const sortedMotivators = Object.entries(motivatorScores).sort((a, b) => {
     if (b[1] !== a[1]) {
       return b[1] - a[1];
     }
-    return colorPriority.indexOf(a[0]) - colorPriority.indexOf(b[0]);
+    // Tie-breaking logic
+    if (a[0] === "Vitality Motivator" && (b[0] === "Strength Motivator" || b[0] === "Creativity Motivator")) return -1;
+    if (b[0] === "Vitality Motivator" && (a[0] === "Strength Motivator" || a[0] === "Creativity Motivator")) return 1;
+    if (a[0] === "Strength Motivator" && b[0] === "Creativity Motivator") return -1;
+    if (b[0] === "Strength Motivator" && a[0] === "Creativity Motivator") return 1;
+    return 0;
   });
-  
-  if (sortedScores.length < 2) return null;
 
-  const topTwoColors = [sortedScores[0][0], sortedScores[1][0]];
-  
+  const winner = sortedMotivators[0][0];
+
+  const topTwoColors = Object.entries(scoreCounter)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 2)
+    .map(entry => entry[0]);
+
   let personaKey = `${topTwoColors[0]}-${topTwoColors[1]}`;
   let persona = personaMap[personaKey];
-  
+
   if (!persona) {
     personaKey = `${topTwoColors[1]}-${topTwoColors[0]}`;
     persona = personaMap[personaKey];
@@ -93,70 +111,51 @@ export function calculateResults(answers: Answers): QuizResult | null {
   }
 
   return {
-    topTwoColors,
+    winner,
     persona,
     scores: scoreCounter,
   };
 }
 
+
 /**
- * Fetches college data and finds matches based on a tiered system.
- * This version is robust and ignores case and trims whitespace.
- * @param primaryColor The user's primary personality color.
- * @param secondaryColor The user's secondary personality color.
+ * Uses AI search to find college matches based on persona and filters.
+ * @param personaName The user's persona name.
+ * @param filters The user's filtering preferences.
  */
-export async function findCollegeMatches(primaryColor: string, secondaryColor: string): Promise<College[]> {
+export async function findCollegeMatches(
+  personaName: string,
+  filters: { location: string; collegeType: string; collegeSize: string; state: string }
+): Promise<College[]> {
   try {
-    const response = await fetch('/colleges.json');
-    if (!response.ok) {
-      throw new Error(`Failed to fetch colleges.json: ${response.statusText}`);
-    }
-    const colleges: College[] = await response.json();
+    let query = `top ${filters.collegeType !== 'No Preference' ? filters.collegeType.toLowerCase() : ''} universities`;
 
-    const cleanPrimary = primaryColor.trim().toLowerCase();
-    const cleanSecondary = secondaryColor.trim().toLowerCase();
-
-    const perfectMatches: College[] = [];
-    const primaryMatches: College[] = [];
-    const secondaryMatches: College[] = [];
-    const addedCollegeNames = new Set<string>();
-
-    for (const college of colleges) {
-      const topColor = college.topColor?.trim().toLowerCase();
-      const supportingColor = college.topSupportingColor?.trim().toLowerCase();
-      if (!topColor) continue;
-
-      const isPerfectMatch = (topColor === cleanPrimary && supportingColor === cleanSecondary) ||
-                             (topColor === cleanSecondary && supportingColor === cleanPrimary);
-
-      if (isPerfectMatch) {
-        if (!addedCollegeNames.has(college.name)) {
-          perfectMatches.push(college);
-          addedCollegeNames.add(college.name);
-        }
-      }
+    if (filters.location === "in-state" && filters.state) {
+      query += ` in ${filters.state}`;
     }
 
-    for (const college of colleges) {
-      if (addedCollegeNames.has(college.name)) continue;
+    query += ` for students interested in ${personaName.toLowerCase()}`;
 
-      const topColor = college.topColor?.trim().toLowerCase();
-      if (!topColor) continue;
-
-      if (topColor === cleanPrimary) {
-        if (!addedCollegeNames.has(college.name)) {
-          primaryMatches.push(college);
-          addedCollegeNames.add(college.name);
+    if (filters.collegeSize) {
+        if (filters.collegeSize === "2,500 or less") {
+            query += " with enrollment under 2500";
+        } else if (filters.collegeSize === "2,501-7,500") {
+            query += " with enrollment between 2501 and 7500";
+        } else if (filters.collegeSize === "7,501+") {
+            query += " with enrollment over 7501";
         }
-      } else if (topColor === cleanSecondary) {
-        if (!addedCollegeNames.has(college.name)) {
-          secondaryMatches.push(college);
-          addedCollegeNames.add(college.name);
-        }
-      }
+    }
+    
+    const searchResults = await Google Search(queries=[query]);
+    
+    if (searchResults && searchResults[0] && searchResults[0].results) {
+        return searchResults[0].results.slice(0, 5).map(result => ({
+            name: result.source_title || 'Unknown College',
+            url: result.url || '#'
+        }));
     }
 
-    return [...perfectMatches, ...primaryMatches, ...secondaryMatches];
+    return [];
 
   } catch (error) {
     console.error("Error finding college matches:", error);

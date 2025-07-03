@@ -10,7 +10,7 @@ interface ResultsProps {
 }
 
 export default function Results({ result, collegeMatches }: ResultsProps) {
-  const { persona, topTwoColors } = result;
+  const { winner, persona } = result;
 
   const colorClasses: { [key: string]: string } = {
     Blue: "bg-blue-100 text-blue-800",
@@ -33,17 +33,9 @@ export default function Results({ result, collegeMatches }: ResultsProps) {
     >
       <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-2xl text-center">
         <h2 className="text-sm font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Your Persona is</h2>
-        <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mt-2">{persona.name}</h1>
+        <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mt-2">{winner}</h1>
 
-        <div className="flex justify-center gap-4 my-6">
-          {topTwoColors.map(color => (
-            <span key={color} className={`px-4 py-1.5 text-lg font-bold rounded-full ${colorClasses[color] || 'bg-gray-100 text-gray-800'}`}>
-              {color}
-            </span>
-          ))}
-        </div>
-
-        <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto text-balance">
+        <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto text-balance mt-4">
           {persona.description}
         </p>
       </div>
