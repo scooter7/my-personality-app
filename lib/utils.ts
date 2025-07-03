@@ -4,9 +4,19 @@ import {
   motivatorCategories,
   personaMap,
 } from "./data";
-import colleges from "../public/us-colleges-and-universities.json";
+import collegesData from "../public/us-colleges-and-universities.json";
 
 // --- TYPE DEFINITIONS ---
+
+interface CollegeRecord {
+    fields: {
+        name: string;
+        website: string;
+        state: string;
+        type: string;
+        population: number;
+    }
+}
 
 export interface Answers {
   selected_traits_q1: string[];
@@ -128,7 +138,7 @@ export async function findCollegeMatches(
   filters: { location: string; collegeType: string; collegeSize: string; state: string }
 ): Promise<College[]> {
   try {
-    let collegePool: any[] = colleges;
+    let collegePool: CollegeRecord["fields"][] = (collegesData as { records: CollegeRecord[] }).records.map(record => record.fields);
 
     // Filter by State
     if (filters.location === 'in-state' && filters.state) {
@@ -150,8 +160,8 @@ export async function findCollegeMatches(
       const range = sizeRanges[filters.collegeSize];
       if (range) {
         collegePool = collegePool.filter(college => {
-          const population = parseInt(college.population, 10);
-          return !isNaN(population) && population >= range.min && population <= range.max;
+          const population = college.population;
+          return population >= range.min && population <= range.max;
         });
       }
     }
@@ -162,7 +172,7 @@ export async function findCollegeMatches(
     
     return shuffled.slice(0, selectionCount).map(college => ({
         name: college.name,
-        url: college.url
+        url: college.website
     }));
 
   } catch (error) {
