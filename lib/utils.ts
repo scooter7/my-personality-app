@@ -10,13 +10,12 @@ import collegesData from "../public/us-colleges-and-universities.json";
 
 // --- TYPE DEFINITIONS ---
 
-// This interface now matches the data types in your JSON file.
 interface CollegeRecord {
   name: string;
   website: string;
   state: string;
   type: string;
-  population: string; // Changed to string to match JSON
+  population: string;
 }
 
 export interface Answers {
@@ -49,10 +48,6 @@ export interface QuizResult {
 
 // --- UTILITY FUNCTIONS ---
 
-/**
- * Shuffles an array in place and returns it.
- * @param array The array to shuffle.
- */
 export function shuffleArray<T>(array: T[]): T[] {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -61,22 +56,13 @@ export function shuffleArray<T>(array: T[]): T[] {
   return array;
 }
 
-/**
- * A utility function for combining Tailwind CSS classes.
- * @param inputs The class values to merge.
- */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/**
- * Calculates the personality results based on user answers.
- * @param answers The user's selections from the quiz.
- */
 export function calculateResults(answers: Answers): QuizResult | null {
   const scoreCounter: { [color: string]: number } = {};
 
-  // Initialize scores
   Object.values(motivatorCategories)
     .flat()
     .forEach((color) => {
@@ -127,7 +113,6 @@ export function calculateResults(answers: Answers): QuizResult | null {
     if (b[1] !== a[1]) {
       return b[1] - a[1];
     }
-    // Tie-breaking logic
     if (
       a[0] === "Vitality Motivator" &&
       (b[0] === "Strength Motivator" || b[0] === "Creativity Motivator")
@@ -175,37 +160,42 @@ export function calculateResults(answers: Answers): QuizResult | null {
   };
 }
 
-/**
- * Finds college matches from a local JSON file based on filters.
- * @param filters The user's filtering preferences.
- */
-export async function findCollegeMatches(
-  filters: {
-    location: string;
-    collegeType: string;
-    collegeSize: string;
-    state: string;
-  }
-): Promise<College[]> {
+export async function findCollegeMatches(filters: {
+  location: string;
+  collegeType: string;
+  collegeSize: string;
+  state: string;
+}): Promise<College[]> {
   try {
     let collegePool: CollegeRecord[] = collegesData as CollegeRecord[];
+    let filteredPool: CollegeRecord[] = [];
 
-    // Filter by State
+    // **IMPROVED FILTERING LOGIC**
+    // Apply filters one by one and fall back if the list becomes empty.
+
+    // 1. Filter by State (if specified)
     if (filters.location === "in-state" && filters.state) {
-      collegePool = collegePool.filter(
+      filteredPool = collegePool.filter(
         (college) => college.state === filters.state
       );
     }
 
-    // Filter by College Type
-    if (filters.collegeType && filters.collegeType !== "No Preference") {
-      collegePool = collegePool.filter(
+    // 2. Filter by College Type (if specified and pool is not empty)
+    if (
+      filters.collegeType &&
+      filters.collegeType !== "No Preference" &&
+      filteredPool.length > 0
+    ) {
+      const typeFiltered = filteredPool.filter(
         (college) => college.type === filters.collegeType
       );
+      if (typeFiltered.length > 0) {
+        filteredPool = typeFiltered;
+      }
     }
 
-    // Filter by College Size
-    if (filters.collegeSize) {
+    // 3. Filter by College Size (if specified and pool is not empty)
+    if (filters.collegeSize && filteredPool.length > 0) {
       const sizeRanges: { [key: string]: { min: number; max: number } } = {
         "2,500 or less": { min: 0, max: 2500 },
         "2,501-7,500": { min: 2501, max: 7500 },
@@ -213,17 +203,32 @@ export async function findCollegeMatches(
       };
       const range = sizeRanges[filters.collegeSize];
       if (range) {
-        collegePool = collegePool.filter((college) => {
+        const sizeFiltered = filteredPool.filter((college) => {
           if (college.population === undefined) return false;
-          // Convert population to a number for comparison
           const population = parseInt(college.population, 10);
-          return !isNaN(population) && population >= range.min && population <= range.max;
+          return (
+            !isNaN(population) &&
+            population >= range.min &&
+            population <= range.max
+          );
         });
+        if (sizeFiltered.length > 0) {
+          filteredPool = sizeFiltered;
+        }
       }
     }
+    
+    // If after all filters the pool is empty, use the original state-filtered list
+    if (filteredPool.length === 0) {
+        if (filters.location === 'in-state' && filters.state) {
+            filteredPool = collegePool.filter(college => college.state === filters.state);
+        } else {
+            // If no state was selected, fall back to the full list
+            filteredPool = collegePool;
+        }
+    }
 
-    // Randomly select 3-5 colleges from the filtered pool
-    const shuffled = shuffleArray(collegePool);
+    const shuffled = shuffleArray(filteredPool);
     const selectionCount = Math.floor(Math.random() * 3) + 3;
 
     return shuffled.slice(0, selectionCount).map((college) => ({
