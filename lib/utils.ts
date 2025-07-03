@@ -160,6 +160,10 @@ export function calculateResults(answers: Answers): QuizResult | null {
   };
 }
 
+/**
+ * Finds college matches from a local JSON file based on filters.
+ * @param filters The user's filtering preferences.
+ */
 export async function findCollegeMatches(filters: {
   location: string;
   collegeType: string;
@@ -167,35 +171,33 @@ export async function findCollegeMatches(filters: {
   state: string;
 }): Promise<College[]> {
   try {
+    // Start with the full list of colleges
     let collegePool: CollegeRecord[] = collegesData as CollegeRecord[];
-    let filteredPool: CollegeRecord[] = [];
 
-    // **IMPROVED FILTERING LOGIC**
-    // Apply filters one by one and fall back if the list becomes empty.
-
-    // 1. Filter by State (if specified)
+    // **CORRECTED FILTERING LOGIC**
+    // 1. Filter by State (if "in-state" is chosen)
     if (filters.location === "in-state" && filters.state) {
-      filteredPool = collegePool.filter(
+      collegePool = collegePool.filter(
         (college) => college.state === filters.state
       );
     }
 
-    // 2. Filter by College Type (if specified and pool is not empty)
-    if (
-      filters.collegeType &&
-      filters.collegeType !== "No Preference" &&
-      filteredPool.length > 0
-    ) {
-      const typeFiltered = filteredPool.filter(
+    // Create a fallback pool in case the next filters yield no results
+    const stateFallbackPool = [...collegePool];
+
+    // 2. Filter by College Type
+    if (filters.collegeType && filters.collegeType !== "No Preference") {
+      const filtered = collegePool.filter(
         (college) => college.type === filters.collegeType
       );
-      if (typeFiltered.length > 0) {
-        filteredPool = typeFiltered;
+      // Only apply this filter if it doesn't result in an empty list
+      if (filtered.length > 0) {
+        collegePool = filtered;
       }
     }
 
-    // 3. Filter by College Size (if specified and pool is not empty)
-    if (filters.collegeSize && filteredPool.length > 0) {
+    // 3. Filter by College Size
+    if (filters.collegeSize) {
       const sizeRanges: { [key: string]: { min: number; max: number } } = {
         "2,500 or less": { min: 0, max: 2500 },
         "2,501-7,500": { min: 2501, max: 7500 },
@@ -203,7 +205,7 @@ export async function findCollegeMatches(filters: {
       };
       const range = sizeRanges[filters.collegeSize];
       if (range) {
-        const sizeFiltered = filteredPool.filter((college) => {
+        const filtered = collegePool.filter((college) => {
           if (college.population === undefined) return false;
           const population = parseInt(college.population, 10);
           return (
@@ -212,26 +214,30 @@ export async function findCollegeMatches(filters: {
             population <= range.max
           );
         });
-        if (sizeFiltered.length > 0) {
-          filteredPool = sizeFiltered;
+        // Only apply this filter if it doesn't result in an empty list
+        if (filtered.length > 0) {
+          collegePool = filtered;
         }
       }
     }
+
+    // Fallback: If the pool is empty after all filters, use the state-only pool
+    if (collegePool.length === 0 && filters.location === 'in-state') {
+        collegePool = stateFallbackPool;
+    }
     
-    // If after all filters the pool is empty, use the original state-filtered list
-    if (filteredPool.length === 0) {
-        if (filters.location === 'in-state' && filters.state) {
-            filteredPool = collegePool.filter(college => college.state === filters.state);
-        } else {
-            // If no state was selected, fall back to the full list
-            filteredPool = collegePool;
-        }
+    // Final check: if the pool is still empty, there are no matches at all
+    if (collegePool.length === 0) {
+        return [];
     }
 
-    const shuffled = shuffleArray(filteredPool);
+    const shuffled = shuffleArray(collegePool);
     const selectionCount = Math.floor(Math.random() * 3) + 3;
 
-    return shuffled.slice(0, selectionCount).map((college) => ({
+    // Slice to a maximum of the pool's length to avoid errors
+    const finalSelectionCount = Math.min(selectionCount, shuffled.length);
+
+    return shuffled.slice(0, finalSelectionCount).map((college) => ({
       name: college.name,
       url: college.website,
     }));
