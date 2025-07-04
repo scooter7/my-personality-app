@@ -136,33 +136,23 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
       (college) => college.type === "1" || college.type === "2"
     );
 
-    // --- FIX: Robust location check and state filtering ---
-    const locationValue = (filters.location || "").toLowerCase();
-    let inStatePool: CollegeRecord[] = collegePool;
-    let usedInState = false;
-
-    if (locationValue === "in-state" && filters.state) {
+    // --- CORRECTED STATE FILTERING ---
+    if (filters.location === "In-state" && filters.state) {
       const stateAbbreviation = stateNameToAbbreviation[filters.state as keyof typeof stateNameToAbbreviation];
       if (stateAbbreviation) {
-        inStatePool = collegePool.filter(college => college.state === stateAbbreviation);
-        collegePool = inStatePool;
-        usedInState = true;
+        collegePool = collegePool.filter(college => college.state === stateAbbreviation);
       }
     }
 
-    // If in-state was selected but no colleges found, fallback to all colleges in that state
-    const stateFallbackPool = usedInState ? inStatePool : [...collegePool];
-
-    // **Secondary Filters**
+    // --- SECONDARY FILTERS ---
+    let filteredPool = collegePool;
 
     if (filters.collegeType && filters.collegeType !== "No Preference") {
-        // Convert the selected type (e.g., "Private") to its code (e.g., "2")
         const typeCode = collegeTypeToCode[filters.collegeType as keyof typeof collegeTypeToCode];
         if (typeCode) {
-            const typeFiltered = collegePool.filter(college => college.type === typeCode);
-            // Only apply the filter if it yields results
+            const typeFiltered = filteredPool.filter(college => college.type === typeCode);
             if (typeFiltered.length > 0) {
-                collegePool = typeFiltered;
+              filteredPool = typeFiltered;
             }
         }
     }
@@ -171,20 +161,18 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
       const sizeRanges = { "2,500 or less": { min: 0, max: 2500 }, "2,501-7,500": { min: 2501, max: 7500 }, "7,501+": { min: 7501, max: Infinity } };
       const range = sizeRanges[filters.collegeSize as keyof typeof sizeRanges];
       if (range) {
-        const sizeFiltered = collegePool.filter(college => {
+        const sizeFiltered = filteredPool.filter(college => {
           const totEnroll = parseInt(college.tot_enroll, 10);
           return !isNaN(totEnroll) && totEnroll >= range.min && totEnroll <= range.max;
         });
         if (sizeFiltered.length > 0) {
-            collegePool = sizeFiltered;
+          filteredPool = sizeFiltered;
         }
       }
     }
     
-    // If after all filters, no colleges remain, fallback to in-state pool if in-state was selected
-    const finalPool = collegePool.length > 0
-      ? collegePool
-      : (usedInState && stateFallbackPool.length > 0 ? stateFallbackPool : stateFallbackPool);
+    // If after all filters, no colleges remain, fallback to the original state-filtered pool
+    const finalPool = filteredPool.length > 0 ? filteredPool : collegePool;
 
     // --- DEBUG LOGGING ---
     if (finalPool.length === 0) {
