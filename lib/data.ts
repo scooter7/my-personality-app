@@ -17,9 +17,9 @@ export const usStates = [
 // --- MOTIVATOR CATEGORIES AND MAPPINGS ---
 
 export const motivatorCategories = {
-  "Strength Motivator": ["Blue", "Green", "Maroon"],
-  "Vitality Motivator": ["Orange", "Pink", "Yellow"],
-  "Creativity Motivator": ["Purple", "Red", "Silver"],
+  "Strength Motivator": ["Silver", "Blue", "Maroon"],
+  "Vitality Motivator": ["Pink", "Purple", "Red"],
+  "Creativity Motivator": ["Green", "Orange", "Yellow"],
 };
 
 // Example trait-to-color mapping (update as needed for your quiz logic)
@@ -73,3 +73,52 @@ export const personaMap: { [key: string]: { name: string; description: string } 
   "Maroon-Orange": { name: "The Achiever", description: "You are determined and energetic, striving for success." },
   // Add more combinations as needed
 };
+
+// --- SCORING AND RESULT CALCULATION ---
+
+/**
+ * Calculates the personality motivator result based on color scores.
+ * @param colorScores A map of color names to their scores (e.g., { Red: 2, Blue: 1, ... }).
+ * @returns An object containing the winning motivator and a description.
+ */
+export function calculateMotivatorResult(colorScores: { [color: string]: number }): { motivator: string; description: string } {
+  const strengthScore = (colorScores["Silver"] || 0) + (colorScores["Blue"] || 0) + (colorScores["Maroon"] || 0);
+  const vitalityScore = (colorScores["Pink"] || 0) + (colorScores["Purple"] || 0) + (colorScores["Red"] || 0);
+  const creativityScore = (colorScores["Green"] || 0) + (colorScores["Orange"] || 0) + (colorScores["Yellow"] || 0);
+
+  let winner: string;
+
+  const scores = {
+    "Vitality Motivator": vitalityScore,
+    "Strength Motivator": strengthScore,
+    "Creativity Motivator": creativityScore,
+  };
+
+  // Find the highest score
+  const maxScore = Math.max(vitalityScore, strengthScore, creativityScore);
+
+  // Get all motivators with the highest score
+  const winners = Object.keys(scores).filter(
+    (key) => scores[key as keyof typeof scores] === maxScore
+  ) as (keyof typeof scores)[];
+
+  // Determine the final winner based on tie-breaking rules
+  if (winners.length === 1) {
+    winner = winners[0];
+  } else if (winners.includes("Vitality Motivator")) {
+    winner = "Vitality Motivator";
+  } else if (winners.includes("Strength Motivator")) {
+    winner = "Strength Motivator";
+  } else {
+    // This case should ideally not be reached if Vitality or Strength are in the tie
+    winner = "Creativity Motivator"; 
+  }
+
+  // You can customize the description based on the winner
+  const description = `Your primary motivator is ${winner}. This means you are driven by...`;
+
+  return {
+    motivator: winner,
+    description: description,
+  };
+}
