@@ -11,24 +11,24 @@ import collegesData from "../public/us-colleges-and-universities.json";
 
 // --- DATA MAPPINGS ---
 
-const stateNameToAbbreviation = {
-    "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR", "California": "CA",
-    "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE", "Florida": "FL", "Georgia": "GA",
-    "Hawaii": "HI", "Idaho": "ID", "Illinois": "IL", "Indiana": "IN", "Iowa": "IA",
-    "Kansas": "KS", "Kentucky": "KY", "Louisiana": "LA", "Maine": "ME", "Maryland": "MD",
-    "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN", "Mississippi": "MS", "Missouri": "MO",
-    "Montana": "MT", "Nebraska": "NE", "Nevada": "NV", "New Hampshire": "NH", "New Jersey": "NJ",
-    "New Mexico": "NM", "New York": "NY", "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH",
-    "Oklahoma": "OK", "Oregon": "OR", "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC",
-    "South Dakota": "SD", "Tennessee": "TN", "Texas": "TX", "Utah": "UT", "Vermont": "VT",
-    "Virginia": "VA", "Washington": "WA", "West Virginia": "WV", "Wisconsin": "WI", "Wyoming": "WY",
-    "District of Columbia": "DC", "American Samoa": "AS", "Guam": "GU", "Northern Mariana Islands": "MP",
-    "Puerto Rico": "PR", "United States Minor Outlying Islands": "UM", "Virgin Islands": "VI",
+const stateNameToAbbreviation: { [key: string]: string } = {
+  "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR", "California": "CA",
+  "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE", "Florida": "FL", "Georgia": "GA",
+  "Hawaii": "HI", "Idaho": "ID", "Illinois": "IL", "Indiana": "IN", "Iowa": "IA",
+  "Kansas": "KS", "Kentucky": "KY", "Louisiana": "LA", "Maine": "ME", "Maryland": "MD",
+  "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN", "Mississippi": "MS", "Missouri": "MO",
+  "Montana": "MT", "Nebraska": "NE", "Nevada": "NV", "New Hampshire": "NH", "New Jersey": "NJ",
+  "New Mexico": "NM", "New York": "NY", "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH",
+  "Oklahoma": "OK", "Oregon": "OR", "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC",
+  "South Dakota": "SD", "Tennessee": "TN", "Texas": "TX", "Utah": "UT", "Vermont": "VT",
+  "Virginia": "VA", "Washington": "WA", "West Virginia": "WV", "Wisconsin": "WI", "Wyoming": "WY",
+  "District of Columbia": "DC", "American Samoa": "AS", "Guam": "GU", "Northern Mariana Islands": "MP",
+  "Puerto Rico": "PR", "United States Minor Outlying Islands": "UM", "Virgin Islands": "VI",
 };
 
-const collegeTypeToCode = {
-    "Public": "1",
-    "Private": "2",
+const collegeTypeToCode: { [key: string]: string } = {
+  "Public": "1",
+  "Private": "2",
 };
 
 // --- TYPE DEFINITIONS ---
@@ -56,6 +56,8 @@ export interface Answers {
   collegeType: string;
   collegeSize: string;
   state: string;
+  full_name: string;
+  email: string;
 }
 
 export interface College {
@@ -84,25 +86,36 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function calculateResults(answers: Answers): QuizResult | null {
-    const scoreCounter: { [color:string]: number } = {};
-    Object.values(motivatorCategories).flat().forEach(color => (scoreCounter[color] = 0));
-    answers.selected_traits_q1.forEach(trait => scoreCounter[traitScoreMap[trait]]++);
-    scoreCounter[traitScoreMap[answers.selected_single_trait_q2]]++;
-    answers.least_represented_traits_q3.forEach(trait => scoreCounter[traitScoreMap[trait]]--);
-    answers.selected_traits_q4.forEach(trait => scoreCounter[traitScoreMap[trait]]++);
-    scoreCounter[traitScoreMap[answers.selected_single_trait_q5]]++;
-    answers.least_represented_traits_q6.forEach(trait => scoreCounter[traitScoreMap[trait]]--);
-    answers.selected_images_q7.forEach(image => scoreCounter[imageScoreMap[image]]++);
-    scoreCounter[imageScoreMap[answers.selected_image_q8]]++;
-    answers.least_represented_images_q9.forEach(image => scoreCounter[imageScoreMap[image]]--);
-    answers.selected_modes_q10.forEach(mode => scoreCounter[traitScoreMap[mode]]++);
-    const motivatorScores = {"Strength Motivator": motivatorCategories["Strength Motivator"].reduce((acc, color) => acc + scoreCounter[color], 0), "Vitality Motivator": motivatorCategories["Vitality Motivator"].reduce((acc, color) => acc + scoreCounter[color], 0), "Creativity Motivator": motivatorCategories["Creativity Motivator"].reduce((acc, color) => acc + scoreCounter[color], 0) };
-    const sortedMotivators = Object.entries(motivatorScores).sort((a, b) => { if (b[1] !== a[1]) return b[1] - a[1]; if (a[0] === "Vitality Motivator") return -1; if (b[0] === "Vitality Motivator") return 1; if (a[0] === "Strength Motivator" && b[0] === "Creativity Motivator") return -1; if (b[0] === "Strength Motivator" && a[0] === "Creativity Motivator") return 1; return 0; });
-    const winner = sortedMotivators[0][0];
-    const topTwoColors = Object.entries(scoreCounter).sort(([, a], [, b]) => b - a).slice(0, 2).map(entry => entry[0]);
-    let personaKey = `${topTwoColors[0]}-${topTwoColors[1]}`;
-    let persona = personaMap[personaKey] || personaMap[`${topTwoColors[1]}-${topTwoColors[0]}`] || { name: "Unique Combination", description: motivatorDescriptions[winner] || "Your unique combination of colors creates a special personality." };
-    return { winner, persona, scores: scoreCounter };
+  const scoreCounter: { [color: string]: number } = {};
+  Object.values(motivatorCategories).flat().forEach(color => (scoreCounter[color] = 0));
+  answers.selected_traits_q1.forEach(trait => scoreCounter[traitScoreMap[trait]]++);
+  if (answers.selected_single_trait_q2) scoreCounter[traitScoreMap[answers.selected_single_trait_q2]]++;
+  answers.least_represented_traits_q3.forEach(trait => scoreCounter[traitScoreMap[trait]]--);
+  answers.selected_traits_q4.forEach(trait => scoreCounter[traitScoreMap[trait]]++);
+  if (answers.selected_single_trait_q5) scoreCounter[traitScoreMap[answers.selected_single_trait_q5]]++;
+  answers.least_represented_traits_q6.forEach(trait => scoreCounter[traitScoreMap[trait]]--);
+  answers.selected_images_q7.forEach(image => scoreCounter[imageScoreMap[image]]++);
+  if (answers.selected_image_q8) scoreCounter[imageScoreMap[answers.selected_image_q8]]++;
+  answers.least_represented_images_q9.forEach(image => scoreCounter[imageScoreMap[image]]--);
+  answers.selected_modes_q10.forEach(mode => scoreCounter[traitScoreMap[mode]]++);
+  const motivatorScores = {
+    "Strength Motivator": motivatorCategories["Strength Motivator"].reduce((acc, color) => acc + scoreCounter[color], 0),
+    "Vitality Motivator": motivatorCategories["Vitality Motivator"].reduce((acc, color) => acc + scoreCounter[color], 0),
+    "Creativity Motivator": motivatorCategories["Creativity Motivator"].reduce((acc, color) => acc + scoreCounter[color], 0)
+  };
+  const sortedMotivators = Object.entries(motivatorScores).sort((a, b) => {
+    if (b[1] !== a[1]) return b[1] - a[1];
+    if (a[0] === "Vitality Motivator") return -1;
+    if (b[0] === "Vitality Motivator") return 1;
+    if (a[0] === "Strength Motivator" && b[0] === "Creativity Motivator") return -1;
+    if (b[0] === "Strength Motivator" && a[0] === "Creativity Motivator") return 1;
+    return 0;
+  });
+  const winner = sortedMotivators[0][0];
+  const topTwoColors = Object.entries(scoreCounter).sort(([, a], [, b]) => b - a).slice(0, 2).map(entry => entry[0]);
+  let personaKey = `${topTwoColors[0]}-${topTwoColors[1]}`;
+  let persona = personaMap[personaKey] || personaMap[`${topTwoColors[1]}-${topTwoColors[0]}`] || { name: "Unique Combination", description: motivatorDescriptions?.[winner] || "Your unique combination of colors creates a special personality." };
+  return { winner, persona, scores: scoreCounter };
 }
 
 function formatWebsiteUrl(url: string): string {
@@ -122,32 +135,51 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
   try {
     let collegePool: CollegeRecord[] = collegesData as unknown as CollegeRecord[];
 
+    // Filter out invalid records first
     collegePool = collegePool.filter(isValidCollegeRecord);
+
+    // Only allow public/private
     collegePool = collegePool.filter(
       (college) => college.type === "1" || college.type === "2"
     );
 
-    if (filters.location === "In-state" && filters.state) {
+    // --- Robust location check and state filtering ---
+    const locationValue = (filters.location || "").toLowerCase();
+    let inStatePool: CollegeRecord[] = collegePool;
+    let usedInState = false;
+
+    if (locationValue === "in-state" && filters.state) {
       const stateAbbreviation = stateNameToAbbreviation[filters.state as keyof typeof stateNameToAbbreviation];
       if (stateAbbreviation) {
-        collegePool = collegePool.filter(college => college.state === stateAbbreviation);
+        inStatePool = collegePool.filter(college => college.state === stateAbbreviation);
+        collegePool = inStatePool;
+        usedInState = true;
       }
     }
+
+    // If in-state was selected but no colleges found, fallback to all colleges in that state
+    const stateFallbackPool = usedInState ? inStatePool : [...collegePool];
+
+    // **Secondary Filters**
 
     let filteredPool = collegePool;
 
     if (filters.collegeType && filters.collegeType !== "No Preference") {
-        const typeCode = collegeTypeToCode[filters.collegeType as keyof typeof collegeTypeToCode];
-        if (typeCode) {
-            const typeFiltered = filteredPool.filter(college => college.type === typeCode);
-            if (typeFiltered.length > 0) {
-              filteredPool = typeFiltered;
-            }
+      const typeCode = collegeTypeToCode[filters.collegeType as keyof typeof collegeTypeToCode];
+      if (typeCode) {
+        const typeFiltered = filteredPool.filter(college => college.type === typeCode);
+        if (typeFiltered.length > 0) {
+          filteredPool = typeFiltered;
         }
+      }
     }
 
     if (filters.collegeSize && filters.collegeSize !== "No Preference") {
-      const sizeRanges = { "2,500 or less": { min: 0, max: 2500 }, "2,501-7,500": { min: 2501, max: 7500 }, "7,501+": { min: 7501, max: Infinity } };
+      const sizeRanges = {
+        "2,500 or less": { min: 0, max: 2500 },
+        "2,501-7,500": { min: 2501, max: 7500 },
+        "7,501+": { min: 7501, max: Infinity }
+      };
       const range = sizeRanges[filters.collegeSize as keyof typeof sizeRanges];
       if (range) {
         const sizeFiltered = filteredPool.filter(college => {
@@ -159,8 +191,11 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
         }
       }
     }
-    
-    const finalPool = filteredPool.length > 0 ? filteredPool : collegePool;
+
+    // If after all filters, no colleges remain, fallback to in-state pool if in-state was selected
+    const finalPool = filteredPool.length > 0
+      ? filteredPool
+      : (usedInState && stateFallbackPool.length > 0 ? stateFallbackPool : stateFallbackPool);
 
     if (finalPool.length === 0) {
       console.log("No colleges found after filtering. Check your JSON data and filters.");
@@ -172,7 +207,6 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
     const selectionCount = Math.floor(Math.random() * 3) + 3;
     const finalSelectionCount = Math.min(selectionCount, shuffled.length);
 
-    // --- CHANGE INTEGRATED HERE ---
     // The `url` now points to the static signup link.
     // The `name` remains the college's name for display purposes.
     return shuffled.slice(0, finalSelectionCount).map((college) => ({

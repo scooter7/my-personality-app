@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Image from "next/image"; // IMPORT ADDED
 import Question from "./Question";
 import Results from "./Results";
 
@@ -26,7 +25,6 @@ import {
   Answers,
 } from "@/lib/utils";
 
-
 export default function QuizClient() {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({
@@ -44,6 +42,8 @@ export default function QuizClient() {
     collegeType: "No Preference",
     collegeSize: "7,501+",
     state: "Iowa",
+    full_name: "",
+    email: "",
   });
 
   const [shuffledData, setShuffledData] = useState({
@@ -93,12 +93,25 @@ export default function QuizClient() {
       setResult(quizResult);
       const matches = await findCollegeMatches(answers);
       setCollegeMatches(matches);
+
+      // Send submission to API
+      await fetch("/api/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: answers.full_name,
+          email: answers.email,
+          personaName: quizResult.persona.name,
+          state: answers.state,
+          // Add more fields as needed
+        }),
+      });
     }
 
     setIsLoading(false);
     nextStep();
   };
-  
+
   const remQ3 = shuffledData.traitsQ1.filter(
     (t) => !answers.selected_traits_q1.includes(t)
   );
@@ -124,6 +137,8 @@ export default function QuizClient() {
     { key: "state", title: "What is your primary state of residence?", type: "select", options: usStates },
     { key: "collegeType", title: "What type of college?", type: "radio", options: collegeTypes },
     { key: "collegeSize", title: "What college size?", type: "radio", options: collegeSizes },
+    { key: "full_name", title: "Your Full Name", type: "text" },
+    { key: "email", title: "Your Email Address", type: "email" },
   ];
 
   const currentQuestion = questions[currentStep];
@@ -135,18 +150,6 @@ export default function QuizClient() {
 
   return (
     <div className="w-full max-w-4xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl">
-      {/* --- LOGO ADDED HERE --- */}
-      <div className="text-center mb-8">
-        <Image
-          src="/images/logo.svg"
-          alt="App Logo"
-          width={200}
-          height={50}
-          priority
-        />
-      </div>
-      {/* --- END LOGO --- */}
-
       <AnimatePresence mode="wait">
         <motion.div
           key={currentStep}
@@ -178,7 +181,7 @@ export default function QuizClient() {
         {isLastQuestion ? (
           <button
             onClick={handleSubmit}
-            disabled={isLoading}
+            disabled={isLoading || !answers.full_name || !answers.email}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400"
           >
             {isLoading ? "Calculating..." : "See My Results"}

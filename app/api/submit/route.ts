@@ -3,14 +3,13 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { personaName, state } = await request.json();
+    const { full_name, email, personaName, state } = await request.json();
 
-    if (!personaName || !state) {
-      throw new Error("Missing required submission fields: personaName and state are required.");
+    if (!personaName || !state || !full_name || !email) {
+      throw new Error("Missing required submission fields: full_name, email, personaName, and state are required.");
     }
 
     // This ensures the table and all necessary columns exist.
-    // It's safe to run this every time.
     await sql`
       CREATE TABLE IF NOT EXISTS quiz_submissions (
         id SERIAL PRIMARY KEY,
@@ -24,22 +23,19 @@ export async function POST(request: Request) {
       );
     `;
 
-    // **THIS IS THE FIX:**
-    // The following commands will alter the existing columns to allow them to be empty (NULL).
-    // This resolves the "violates not-null constraint" error permanently.
+    // Ensure columns allow NULLs
     await sql`ALTER TABLE quiz_submissions ALTER COLUMN full_name DROP NOT NULL;`;
     await sql`ALTER TABLE quiz_submissions ALTER COLUMN email DROP NOT NULL;`;
     await sql`ALTER TABLE quiz_submissions ALTER COLUMN affiliation DROP NOT NULL;`;
     await sql`ALTER TABLE quiz_submissions ALTER COLUMN top_two_colors DROP NOT NULL;`;
-    
-    // This command from the previous fix ensures the 'state' column exists.
-    await sql`ALTER TABLE quiz_submissions ADD COLUMN IF NOT EXISTS state VARCHAR(100);`;
 
+    // Ensure the 'state' column exists.
+    await sql`ALTER TABLE quiz_submissions ADD COLUMN IF NOT EXISTS state VARCHAR(100);`;
 
     // Now, the INSERT statement will succeed.
     await sql`
-      INSERT INTO quiz_submissions (persona_name, state)
-      VALUES (${personaName}, ${state});
+      INSERT INTO quiz_submissions (full_name, email, persona_name, state)
+      VALUES (${full_name}, ${email}, ${personaName}, ${state});
     `;
 
     return NextResponse.json({ message: 'Submission Saved' }, { status: 200 });
