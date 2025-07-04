@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image"; // IMPORT ADDED
 import Question from "./Question";
 import Results from "./Results";
 
@@ -120,7 +121,6 @@ export default function QuizClient() {
     { key: "least_represented_images_q9", title: "Select 3 icons that least represent you.", type: "image-checkbox", options: remQ9, max: 3 },
     { key: "selected_modes_q10", title: "Which two 'Modes of Connection'?", type: "checkbox", options: shuffledData.modesOfConnection, max: 2 },
     { key: "location", title: "Where would you like to attend college?", type: "radio", options: collegeLocations },
-    // **THE FIX:** The 'showIf' condition has been removed from this line.
     { key: "state", title: "What is your primary state of residence?", type: "select", options: usStates },
     { key: "collegeType", title: "What type of college?", type: "radio", options: collegeTypes },
     { key: "collegeSize", title: "What college size?", type: "radio", options: collegeSizes },
@@ -135,6 +135,18 @@ export default function QuizClient() {
 
   return (
     <div className="w-full max-w-4xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl">
+      {/* --- LOGO ADDED HERE --- */}
+      <div className="text-center mb-8">
+        <Image
+          src="/images/logo.svg"
+          alt="App Logo"
+          width={200}
+          height={50}
+          priority
+        />
+      </div>
+      {/* --- END LOGO --- */}
+
       <AnimatePresence mode="wait">
         <motion.div
           key={currentStep}

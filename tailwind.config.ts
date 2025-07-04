@@ -9,17 +9,10 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: {
-          blue: '#0077c8',
-          green: '#00a859',
-          maroon: '#800000',
-          orange: '#f37021',
-          pink: '#e5007e',
-          purple: '#6a0dad',
-          red: '#ed1c24',
-          silver: '#a9a9a9',
-          yellow: '#ffd400',
-        },
+        'cx-dark-blue': '#003366',
+        'cx-green': '#99cc33',
+        'cx-text': '#333333',
+        'cx-light-gray': '#f0f0f0',
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
@@ -30,4 +23,5 @@ const config: Config = {
   },
   plugins: [],
 };
+
 export default config;

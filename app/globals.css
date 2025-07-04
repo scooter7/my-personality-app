@@ -2,32 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    --background: theme('colors.white');
+    --foreground: theme('colors.cx-dark-blue');
+    --card: theme('colors.white');
+    --card-foreground: theme('colors.cx-text');
+    --popover: theme('colors.white');
+    --popover-foreground: theme('colors.cx-text');
+    --primary: theme('colors.cx-dark-blue');
+    --primary-foreground: theme('colors.white');
+    --secondary: theme('colors.cx-light-gray');
+    --secondary-foreground: theme('colors.cx-dark-blue');
+    --muted: theme('colors.cx-light-gray');
+    --muted-foreground: theme('colors.slate.500');
+    --accent: theme('colors.cx-green');
+    --accent-foreground: theme('colors.white');
+    --destructive: theme('colors.red.500');
+    --destructive-foreground: theme('colors.slate.50');
+    --border: theme('colors.slate.200');
+    --input: theme('colors.slate.200');
+    --ring: theme('colors.cx-green');
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Define dark mode colors if needed */
   }
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }
