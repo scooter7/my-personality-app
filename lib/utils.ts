@@ -25,22 +25,20 @@ const stateNameToAbbreviation = {
     "Puerto Rico": "PR", "United States Minor Outlying Islands": "UM", "Virgin Islands": "VI",
 };
 
-// **THE FIX:** Mapping for college type names to the numeric codes in the JSON file.
+// Only allow "Public" and "Private"
 const collegeTypeToCode = {
     "Public": "1",
     "Private": "2",
-    "For-Profit": "3",
 };
-
 
 // --- TYPE DEFINITIONS ---
 
 interface CollegeRecord {
-  NAME: string;
-  WEBSITE: string;
-  STATE: string;
-  TYPE: string;
-  POPULATION: string;
+  name: string;
+  website: string;
+  state: string;
+  type: string;
+  tot_enroll: string;
 }
 
 export interface Answers {
@@ -107,20 +105,53 @@ export function calculateResults(answers: Answers): QuizResult | null {
     return { winner, persona, scores: scoreCounter };
 }
 
+// --- URL VALIDATION/FORMATTING ---
+function formatWebsiteUrl(url: string): string {
+  if (!url) return "";
+  // If already starts with http or https, return as is
+  if (/^https?:\/\//i.test(url)) return url;
+  // If starts with www, prepend https://
+  if (/^www\./i.test(url)) return `https://${url}`;
+  // Otherwise, try to prepend https://
+  return `https://${url}`;
+}
+
+function isValidCollegeRecord(college: CollegeRecord): boolean {
+  // Must have a non-empty name and a non-empty, valid website
+  if (!college.name || !college.website) return false;
+  // Website must be a plausible domain (very basic check)
+  if (!/\./.test(college.website)) return false;
+  return true;
+}
 
 export async function findCollegeMatches(filters: Answers): Promise<College[]> {
   try {
     let collegePool: CollegeRecord[] = collegesData as unknown as CollegeRecord[];
 
-    // **Primary Filter: State**
-    if (filters.location === "in-state" && filters.state) {
+    // Filter out invalid records first
+    collegePool = collegePool.filter(isValidCollegeRecord);
+
+    // Only allow public/private
+    collegePool = collegePool.filter(
+      (college) => college.type === "1" || college.type === "2"
+    );
+
+    // --- FIX: Robust location check and state filtering ---
+    const locationValue = (filters.location || "").toLowerCase();
+    let inStatePool: CollegeRecord[] = collegePool;
+    let usedInState = false;
+
+    if (locationValue === "in-state" && filters.state) {
       const stateAbbreviation = stateNameToAbbreviation[filters.state as keyof typeof stateNameToAbbreviation];
       if (stateAbbreviation) {
-        collegePool = collegePool.filter(college => college.STATE === stateAbbreviation);
+        inStatePool = collegePool.filter(college => college.state === stateAbbreviation);
+        collegePool = inStatePool;
+        usedInState = true;
       }
     }
 
-    const stateFallbackPool = [...collegePool];
+    // If in-state was selected but no colleges found, fallback to all colleges in that state
+    const stateFallbackPool = usedInState ? inStatePool : [...collegePool];
 
     // **Secondary Filters**
 
@@ -128,7 +159,7 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
         // Convert the selected type (e.g., "Private") to its code (e.g., "2")
         const typeCode = collegeTypeToCode[filters.collegeType as keyof typeof collegeTypeToCode];
         if (typeCode) {
-            const typeFiltered = collegePool.filter(college => college.TYPE === typeCode);
+            const typeFiltered = collegePool.filter(college => college.type === typeCode);
             // Only apply the filter if it yields results
             if (typeFiltered.length > 0) {
                 collegePool = typeFiltered;
@@ -141,8 +172,8 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
       const range = sizeRanges[filters.collegeSize as keyof typeof sizeRanges];
       if (range) {
         const sizeFiltered = collegePool.filter(college => {
-          const population = parseInt(college.POPULATION, 10);
-          return !isNaN(population) && population >= range.min && population <= range.max;
+          const totEnroll = parseInt(college.tot_enroll, 10);
+          return !isNaN(totEnroll) && totEnroll >= range.min && totEnroll <= range.max;
         });
         if (sizeFiltered.length > 0) {
             collegePool = sizeFiltered;
@@ -150,7 +181,22 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
       }
     }
     
-    const finalPool = collegePool.length > 0 ? collegePool : stateFallbackPool;
+    // If after all filters, no colleges remain, fallback to in-state pool if in-state was selected
+    const finalPool = collegePool.length > 0
+      ? collegePool
+      : (usedInState && stateFallbackPool.length > 0 ? stateFallbackPool : stateFallbackPool);
+
+    // --- DEBUG LOGGING ---
+    if (finalPool.length === 0) {
+      console.log("No colleges found after filtering. Check your JSON data and filters.");
+    } else {
+      console.log("First 5 colleges after filtering:");
+      finalPool.slice(0, 5).forEach((college, idx) => {
+        console.log(
+          `[${idx + 1}] Name: ${college.name}, Website: ${college.website}, State: ${college.state}, Type: ${college.type}, Enrollment: ${college.tot_enroll}`
+        );
+      });
+    }
 
     if (finalPool.length === 0) return [];
 
@@ -158,9 +204,10 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
     const selectionCount = Math.floor(Math.random() * 3) + 3;
     const finalSelectionCount = Math.min(selectionCount, shuffled.length);
 
+    // Only return colleges with valid names and websites, and format the website URLs
     return shuffled.slice(0, finalSelectionCount).map((college) => ({
-      name: college.NAME,
-      url: college.WEBSITE,
+      name: college.name,
+      url: formatWebsiteUrl(college.website),
     }));
 
   } catch (error) {
