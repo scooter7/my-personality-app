@@ -27,14 +27,11 @@
   }
 
   .dark {
-    /* Define dark mode colors if needed */
+    /* You can define dark mode colors here if needed */
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
   body {
     @apply bg-background text-foreground;
   }
