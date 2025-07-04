@@ -5,7 +5,7 @@ import {
   imageScoreMap,
   motivatorCategories,
   personaMap,
-  motivatorDescriptions, // IMPORT ADDED
+  motivatorDescriptions,
 } from "./data";
 import collegesData from "../public/us-colleges-and-universities.json";
 
@@ -26,7 +26,6 @@ const stateNameToAbbreviation = {
     "Puerto Rico": "PR", "United States Minor Outlying Islands": "UM", "Virgin Islands": "VI",
 };
 
-// Only allow "Public" and "Private"
 const collegeTypeToCode = {
     "Public": "1",
     "Private": "2",
@@ -102,14 +101,10 @@ export function calculateResults(answers: Answers): QuizResult | null {
     const winner = sortedMotivators[0][0];
     const topTwoColors = Object.entries(scoreCounter).sort(([, a], [, b]) => b - a).slice(0, 2).map(entry => entry[0]);
     let personaKey = `${topTwoColors[0]}-${topTwoColors[1]}`;
-    
-    // --- LANGUAGE CHANGE INTEGRATED HERE ---
     let persona = personaMap[personaKey] || personaMap[`${topTwoColors[1]}-${topTwoColors[0]}`] || { name: "Unique Combination", description: motivatorDescriptions[winner] || "Your unique combination of colors creates a special personality." };
-    
     return { winner, persona, scores: scoreCounter };
 }
 
-// --- URL VALIDATION/FORMATTING ---
 function formatWebsiteUrl(url: string): string {
   if (!url) return "";
   if (/^https?:\/\//i.test(url)) return url;
@@ -128,7 +123,6 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
     let collegePool: CollegeRecord[] = collegesData as unknown as CollegeRecord[];
 
     collegePool = collegePool.filter(isValidCollegeRecord);
-
     collegePool = collegePool.filter(
       (college) => college.type === "1" || college.type === "2"
     );
@@ -170,13 +164,6 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
 
     if (finalPool.length === 0) {
       console.log("No colleges found after filtering. Check your JSON data and filters.");
-    } else {
-      console.log("First 5 colleges after filtering:");
-      finalPool.slice(0, 5).forEach((college, idx) => {
-        console.log(
-          `[${idx + 1}] Name: ${college.name}, Website: ${college.website}, State: ${college.state}, Type: ${college.type}, Enrollment: ${college.tot_enroll}`
-        );
-      });
     }
 
     if (finalPool.length === 0) return [];
@@ -185,9 +172,12 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
     const selectionCount = Math.floor(Math.random() * 3) + 3;
     const finalSelectionCount = Math.min(selectionCount, shuffled.length);
 
+    // --- CHANGE INTEGRATED HERE ---
+    // The `url` now points to the static signup link.
+    // The `name` remains the college's name for display purposes.
     return shuffled.slice(0, finalSelectionCount).map((college) => ({
       name: college.name,
-      url: formatWebsiteUrl(college.website),
+      url: "https://www.collegexpress.com/reg/signup",
     }));
 
   } catch (error) {
