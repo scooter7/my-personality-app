@@ -22,6 +22,18 @@ export const motivatorCategories = {
   "Creativity Motivator": ["Green", "Orange", "Yellow"],
 };
 
+// --- MOTIVATOR DESCRIPTIONS ---
+
+export const motivatorDescriptions: { [key: string]: string } = {
+  "Creativity Motivator":
+    "People with a dominant Creativity Motivator are likely to be creative, adventurous, and transformative. Others will see them as imaginative, inquisitive, and innovative. If a person possesses a significant expression of Creativity, they may be fueled by the act of self-expression, questing toward the unknown, and a need to invent the future.",
+  "Strength Motivator":
+    "People with a dominant Strength Motivator are likely to be daring, powerful, and resilient. Others will see them as assertive, tenacious, and at times even rebellious. If a person possesses a significant expression of Strength, they may be fueled by the need for growth, a desire to disrupt the norm, or the act of overcoming challenges.",
+  "Vitality Motivator":
+    "People with a dominant Vitality Motivator are likely to be sophisticated, cheerful, and supportive. Others will see them as refined, enthusiastic, and often even selfless. If a person possesses a significant expression of Vitality, they may be fueled by their many life experiences, the joy of entertaining, and the act of showing others compassion.",
+};
+
+
 // Example trait-to-color mapping (update as needed for your quiz logic)
 export const traitScoreMap: { [trait: string]: string } = {
   Confident: "Blue",
@@ -110,12 +122,10 @@ export function calculateMotivatorResult(colorScores: { [color: string]: number 
   } else if (winners.includes("Strength Motivator")) {
     winner = "Strength Motivator";
   } else {
-    // This case should ideally not be reached if Vitality or Strength are in the tie
-    winner = "Creativity Motivator"; 
+    winner = "Creativity Motivator";
   }
 
-  // You can customize the description based on the winner
-  const description = `Your primary motivator is ${winner}. This means you are driven by...`;
+  const description = motivatorDescriptions[winner] || "No description available.";
 
   return {
     motivator: winner,
