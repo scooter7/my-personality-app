@@ -114,7 +114,16 @@ export function calculateResults(answers: Answers): QuizResult | null {
   const winner = sortedMotivators[0][0];
   const topTwoColors = Object.entries(scoreCounter).sort(([, a], [, b]) => b - a).slice(0, 2).map(entry => entry[0]);
   let personaKey = `${topTwoColors[0]}-${topTwoColors[1]}`;
-  let persona = personaMap[personaKey] || personaMap[`${topTwoColors[1]}-${topTwoColors[0]}`] || { name: "Unique Combination", description: motivatorDescriptions?.[winner] || "Your unique combination of colors creates a special personality." };
+  let persona = personaMap[personaKey] || personaMap[`${topTwoColors[1]}-${topTwoColors[0]}`];
+
+  // --- FIX: fallback to motivator winner, not "Unique Combination" ---
+  if (!persona) {
+    persona = {
+      name: winner,
+      description: motivatorDescriptions?.[winner] || "Your unique combination of colors creates a special personality."
+    };
+  }
+
   return { winner, persona, scores: scoreCounter };
 }
 
