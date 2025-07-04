@@ -33,6 +33,6 @@
 
 @layer base {
   body {
-    @apply bg-background text-foreground;
+    @apply bg-[theme(colors.white)] text-[theme(colors.cx-dark-blue)];
   }
 }
