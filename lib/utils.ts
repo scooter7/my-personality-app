@@ -5,6 +5,7 @@ import {
   imageScoreMap,
   motivatorCategories,
   personaMap,
+  motivatorDescriptions, // IMPORT ADDED
 } from "./data";
 import collegesData from "../public/us-colleges-and-universities.json";
 
@@ -101,25 +102,23 @@ export function calculateResults(answers: Answers): QuizResult | null {
     const winner = sortedMotivators[0][0];
     const topTwoColors = Object.entries(scoreCounter).sort(([, a], [, b]) => b - a).slice(0, 2).map(entry => entry[0]);
     let personaKey = `${topTwoColors[0]}-${topTwoColors[1]}`;
-    let persona = personaMap[personaKey] || personaMap[`${topTwoColors[1]}-${topTwoColors[0]}`] || { name: "Unique Combination", description: "Your unique combination of colors creates a special personality." };
+    
+    // --- LANGUAGE CHANGE INTEGRATED HERE ---
+    let persona = personaMap[personaKey] || personaMap[`${topTwoColors[1]}-${topTwoColors[0]}`] || { name: "Unique Combination", description: motivatorDescriptions[winner] || "Your unique combination of colors creates a special personality." };
+    
     return { winner, persona, scores: scoreCounter };
 }
 
 // --- URL VALIDATION/FORMATTING ---
 function formatWebsiteUrl(url: string): string {
   if (!url) return "";
-  // If already starts with http or https, return as is
   if (/^https?:\/\//i.test(url)) return url;
-  // If starts with www, prepend https://
   if (/^www\./i.test(url)) return `https://${url}`;
-  // Otherwise, try to prepend https://
   return `https://${url}`;
 }
 
 function isValidCollegeRecord(college: CollegeRecord): boolean {
-  // Must have a non-empty name and a non-empty, valid website
   if (!college.name || !college.website) return false;
-  // Website must be a plausible domain (very basic check)
   if (!/\./.test(college.website)) return false;
   return true;
 }
@@ -128,15 +127,12 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
   try {
     let collegePool: CollegeRecord[] = collegesData as unknown as CollegeRecord[];
 
-    // Filter out invalid records first
     collegePool = collegePool.filter(isValidCollegeRecord);
 
-    // Only allow public/private
     collegePool = collegePool.filter(
       (college) => college.type === "1" || college.type === "2"
     );
 
-    // --- CORRECTED STATE FILTERING ---
     if (filters.location === "In-state" && filters.state) {
       const stateAbbreviation = stateNameToAbbreviation[filters.state as keyof typeof stateNameToAbbreviation];
       if (stateAbbreviation) {
@@ -144,7 +140,6 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
       }
     }
 
-    // --- SECONDARY FILTERS ---
     let filteredPool = collegePool;
 
     if (filters.collegeType && filters.collegeType !== "No Preference") {
@@ -171,10 +166,8 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
       }
     }
     
-    // If after all filters, no colleges remain, fallback to the original state-filtered pool
     const finalPool = filteredPool.length > 0 ? filteredPool : collegePool;
 
-    // --- DEBUG LOGGING ---
     if (finalPool.length === 0) {
       console.log("No colleges found after filtering. Check your JSON data and filters.");
     } else {
@@ -192,7 +185,6 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
     const selectionCount = Math.floor(Math.random() * 3) + 3;
     const finalSelectionCount = Math.min(selectionCount, shuffled.length);
 
-    // Only return colleges with valid names and websites, and format the website URLs
     return shuffled.slice(0, finalSelectionCount).map((college) => ({
       name: college.name,
       url: formatWebsiteUrl(college.website),
