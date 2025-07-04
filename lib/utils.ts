@@ -8,7 +8,8 @@ import {
 } from "./data";
 import collegesData from "../public/us-colleges-and-universities.json";
 
-// --- STATE NAME TO ABBREVIATION MAPPING ---
+// --- DATA MAPPINGS ---
+
 const stateNameToAbbreviation = {
     "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR", "California": "CA",
     "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE", "Florida": "FL", "Georgia": "GA",
@@ -24,8 +25,16 @@ const stateNameToAbbreviation = {
     "Puerto Rico": "PR", "United States Minor Outlying Islands": "UM", "Virgin Islands": "VI",
 };
 
+// **THE FIX:** Mapping for college type names to the numeric codes in the JSON file.
+const collegeTypeToCode = {
+    "Public": "1",
+    "Private": "2",
+    "For-Profit": "3",
+};
+
 
 // --- TYPE DEFINITIONS ---
+
 interface CollegeRecord {
   NAME: string;
   WEBSITE: string;
@@ -111,19 +120,23 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
       }
     }
 
-    // Create a fallback pool that is only filtered by state
     const stateFallbackPool = [...collegePool];
 
     // **Secondary Filters**
 
     if (filters.collegeType && filters.collegeType !== "No Preference") {
-        const typeFiltered = collegePool.filter(college => college.TYPE === filters.collegeType);
-        if (typeFiltered.length > 0) {
-            collegePool = typeFiltered;
+        // Convert the selected type (e.g., "Private") to its code (e.g., "2")
+        const typeCode = collegeTypeToCode[filters.collegeType as keyof typeof collegeTypeToCode];
+        if (typeCode) {
+            const typeFiltered = collegePool.filter(college => college.TYPE === typeCode);
+            // Only apply the filter if it yields results
+            if (typeFiltered.length > 0) {
+                collegePool = typeFiltered;
+            }
         }
     }
 
-    if (filters.collegeSize) {
+    if (filters.collegeSize && filters.collegeSize !== "No Preference") {
       const sizeRanges = { "2,500 or less": { min: 0, max: 2500 }, "2,501-7,500": { min: 2501, max: 7500 }, "7,501+": { min: 7501, max: Infinity } };
       const range = sizeRanges[filters.collegeSize as keyof typeof sizeRanges];
       if (range) {
@@ -137,9 +150,9 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
       }
     }
     
-    // **Final Selection**
-    // If the secondary filters resulted in an empty list, use the state-only fallback.
     const finalPool = collegePool.length > 0 ? collegePool : stateFallbackPool;
+
+    if (finalPool.length === 0) return [];
 
     const shuffled = shuffleArray(finalPool);
     const selectionCount = Math.floor(Math.random() * 3) + 3;
