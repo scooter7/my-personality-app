@@ -56,7 +56,7 @@ export default function Results({ result, collegeMatches }: ResultsProps) {
                     <CheckCircleIcon className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0" />
                     <div>
                         <h4 className="font-bold text-xl text-gray-900 dark:text-white">{college.name}</h4>
-                        <p className="text-sm text-blue-500 hover:underline mt-2">Visit Website &rarr;</p>
+                        <p className="text-sm text-blue-500 hover:underline mt-2">Learn More &rarr;</p>
                     </div>
                 </div>
               </a>
