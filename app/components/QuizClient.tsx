@@ -26,9 +26,12 @@ import {
   Answers,
 } from "@/lib/utils";
 
+
 export default function QuizClient() {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({
+    full_name: "", // ADDED
+    email: "",     // ADDED
     selected_traits_q1: [],
     selected_single_trait_q2: "",
     least_represented_traits_q3: [],
@@ -88,18 +91,25 @@ export default function QuizClient() {
     const currentQuestion = questions[currentStep];
     const answer = answers[currentQuestion.key as keyof Answers];
 
-    if (Array.isArray(answer) && answer.length !== currentQuestion.max) {
-      setError(`Please select exactly ${currentQuestion.max} options.`);
-      return false;
+    if (Array.isArray(answer)) {
+        if (answer.length !== (currentQuestion.max || 1)) {
+            setError(`Please select exactly ${currentQuestion.max} options.`);
+            return false;
+        }
+    } else if (typeof answer === 'string') {
+        if (!answer.trim()) {
+            setError("This field is required.");
+            return false;
+        }
+        if (currentQuestion.key === 'email' && !/\S+@\S+\.\S+/.test(answer)) {
+            setError("Please enter a valid email address.");
+            return false;
+        }
+    } else if (!answer) {
+        setError("This field is required.");
+        return false;
     }
 
-    if (typeof answer === 'string' && !answer) {
-      setError("This field is required.");
-      return false;
-    }
-    
-    // Add more specific validation for email, etc. if needed
-    
     setError(null);
     return true;
   };
@@ -110,7 +120,10 @@ export default function QuizClient() {
     }
   };
   
-  const prevStep = () => setCurrentStep((s) => s - 1);
+  const prevStep = () => {
+    setError(null);
+    setCurrentStep((s) => s - 1);
+  };
 
   const handleSubmit = async () => {
     if (validateStep()) {
@@ -149,6 +162,9 @@ export default function QuizClient() {
     { key: "selected_image_q8", title: "Which of those 3 is most like you?", type: "image-radio", options: answers.selected_images_q7, max: 1 },
     { key: "least_represented_images_q9", title: "Select 3 icons that least represent you.", type: "image-checkbox", options: remQ9, max: 3 },
     { key: "selected_modes_q10", title: "Which two 'Modes of Connection'?", type: "checkbox", options: shuffledData.modesOfConnection, max: 2 },
+    // ADDED NAME AND EMAIL QUESTIONS
+    { key: "full_name", title: "What is your full name?", type: "text", max: 1 },
+    { key: "email", title: "What is your email address?", type: "email", max: 1 },
     { key: "location", title: "Where would you like to attend college?", type: "radio", options: collegeLocations, max: 1 },
     { key: "state", title: "What is your primary state of residence?", type: "select", options: usStates, max: 1 },
     { key: "collegeType", title: "What type of college?", type: "radio", options: collegeTypes, max: 1 },
