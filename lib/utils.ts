@@ -69,6 +69,7 @@ export interface QuizResult {
   winner: string;
   persona: { name: string; description: string };
   scores: { [color: string]: number };
+  answers: Answers; // This line is added
 }
 
 // --- UTILITY FUNCTIONS ---
@@ -116,7 +117,6 @@ export function calculateResults(answers: Answers): QuizResult | null {
   let personaKey = `${topTwoColors[0]}-${topTwoColors[1]}`;
   let persona = personaMap[personaKey] || personaMap[`${topTwoColors[1]}-${topTwoColors[0]}`];
 
-  // --- FIX: fallback to motivator winner, not "Unique Combination" ---
   if (!persona) {
     persona = {
       name: winner,
@@ -124,7 +124,8 @@ export function calculateResults(answers: Answers): QuizResult | null {
     };
   }
 
-  return { winner, persona, scores: scoreCounter };
+  // UPDATED: Return the full 'answers' object
+  return { winner, persona, scores: scoreCounter, answers };
 }
 
 function formatWebsiteUrl(url: string): string {
@@ -144,15 +145,12 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
   try {
     let collegePool: CollegeRecord[] = collegesData as unknown as CollegeRecord[];
 
-    // Filter out invalid records first
     collegePool = collegePool.filter(isValidCollegeRecord);
 
-    // Only allow public/private
     collegePool = collegePool.filter(
       (college) => college.type === "1" || college.type === "2"
     );
 
-    // --- Robust location check and state filtering ---
     const locationValue = (filters.location || "").toLowerCase();
     let inStatePool: CollegeRecord[] = collegePool;
     let usedInState = false;
@@ -166,10 +164,7 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
       }
     }
 
-    // If in-state was selected but no colleges found, fallback to all colleges in that state
     const stateFallbackPool = usedInState ? inStatePool : [...collegePool];
-
-    // **Secondary Filters**
 
     let filteredPool = collegePool;
 
@@ -201,7 +196,6 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
       }
     }
 
-    // If after all filters, no colleges remain, fallback to in-state pool if in-state was selected
     const finalPool = filteredPool.length > 0
       ? filteredPool
       : (usedInState && stateFallbackPool.length > 0 ? stateFallbackPool : stateFallbackPool);
@@ -216,8 +210,6 @@ export async function findCollegeMatches(filters: Answers): Promise<College[]> {
     const selectionCount = Math.floor(Math.random() * 3) + 3;
     const finalSelectionCount = Math.min(selectionCount, shuffled.length);
 
-    // The `url` now points to the static signup link.
-    // The `name` remains the college's name for display purposes.
     return shuffled.slice(0, finalSelectionCount).map((college) => ({
       name: college.name,
       url: "https://www.collegexpress.com/reg/signup",
