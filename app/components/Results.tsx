@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
+import { motion } from "framer-motion";
 import { QuizResult, College } from "@/lib/utils";
+import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/solid';
 import { motivatorDescriptions } from "@/lib/data";
 
 interface ResultsProps {
@@ -10,14 +12,17 @@ interface ResultsProps {
 }
 
 export default function Results({ result, collegeMatches }: ResultsProps) {
+  // useEffect to handle the form submission when the component loads
   useEffect(() => {
     const submitResults = async () => {
+      // Ensure there is a result object before submitting
       if (!result) return;
 
       try {
         await fetch("/api/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          // The full 'answers' object is now correctly included in 'result'
           body: JSON.stringify({ answers: result.answers }),
         });
       } catch (error) {
@@ -26,53 +31,58 @@ export default function Results({ result, collegeMatches }: ResultsProps) {
     };
 
     submitResults();
-  }, [result]);
+  }, [result]); // The effect runs when the result is available
 
+  // Fallback description logic
   const personaDescription =
-    result.persona.description || motivatorDescriptions[result.winner];
+    result.persona.description || motivatorDescriptions[result.winner] || "Your unique personality profile.";
 
   return (
-    // FIX: Added card styling classes to this div
-    <div className="w-full max-w-4xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl text-center">
-      <h1 className="text-4xl font-bold text-cx-dark-blue mb-4">
-        Your Results
-      </h1>
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-cx-green mb-2">
-          Your Persona: {result.persona.name}
-        </h2>
-        <p className="text-lg text-cx-text">{personaDescription}</p>
-      </div>
-      <div>
-        <h2 className="text-2xl font-semibold text-cx-green mb-2">
-          Your Motivator: {result.winner}
-        </h2>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5 }}
+      className="w-full max-w-4xl mx-auto"
+    >
+      <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-2xl text-center">
+        <h2 className="text-sm font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Your Persona is</h2>
+        <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mt-2">{result.persona.name}</h1>
+
+        <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto text-balance mt-4">
+          {personaDescription}
+        </p>
       </div>
 
-      {collegeMatches.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-2xl font-semibold text-cx-green mb-4">
-            Here are some colleges that might be a good fit for you:
-          </h2>
-          <ul className="text-left list-none p-0">
-            {collegeMatches.map((college, index) => (
-              <li
-                key={index}
-                className="mb-2 text-lg text-cx-dark-blue hover:text-cx-green"
+      <div className="mt-10">
+        <h3 className="text-2xl font-bold text-center text-gray-800 dark:text-white mb-6">Your College Matches</h3>
+        {collegeMatches.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {collegeMatches.map((college) => (
+              <a
+                key={college.name}
+                href={college.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-xl hover:scale-105 transition-transform duration-300"
               >
-                <a
-                  href={college.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold"
-                >
-                  {college.name}
-                </a>
-              </li>
+                <div className="flex items-start">
+                  <CheckCircleIcon className="h-6 w-6 text-green-500 mr-3 mt-1 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-bold text-xl text-gray-900 dark:text-white">{college.name}</h4>
+                    <p className="text-sm text-blue-500 hover:underline mt-2">Learn More &rarr;</p>
+                  </div>
+                </div>
+              </a>
             ))}
-          </ul>
-        </div>
-      )}
-    </div>
+          </div>
+        ) : (
+          <div className="text-center bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg">
+             <XCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <p className="text-xl text-gray-700 dark:text-gray-200">No direct college matches found for your unique persona.</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-2">Don't worry! This is a great opportunity to explore a wide range of schools.</p>
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 }
