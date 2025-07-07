@@ -12,18 +12,19 @@ interface ResultsProps {
 }
 
 export default function Results({ result, collegeMatches }: ResultsProps) {
-  // useEffect to handle the form submission when the component loads
   useEffect(() => {
     const submitResults = async () => {
-      // Ensure there is a result object before submitting
       if (!result) return;
 
       try {
         await fetch("/api/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          // The full 'answers' object is now correctly included in 'result'
-          body: JSON.stringify({ answers: result.answers }),
+          // FIX: The 'answers' object is now spread, and 'personaName' is added
+          body: JSON.stringify({
+            ...result.answers, // Sends all the answers (name, email, state, etc.)
+            personaName: result.persona.name, // Adds the persona name
+          }),
         });
       } catch (error) {
         console.error("An error occurred during submission:", error);
@@ -31,9 +32,8 @@ export default function Results({ result, collegeMatches }: ResultsProps) {
     };
 
     submitResults();
-  }, [result]); // The effect runs when the result is available
+  }, [result]);
 
-  // Fallback description logic
   const personaDescription =
     result.persona.description || motivatorDescriptions[result.winner] || "Your unique personality profile.";
 
