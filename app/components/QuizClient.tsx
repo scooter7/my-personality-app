@@ -30,8 +30,8 @@ import {
 export default function QuizClient() {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({
-    full_name: "", // ADDED
-    email: "",     // ADDED
+    full_name: "",
+    email: "",
     selected_traits_q1: [],
     selected_single_trait_q2: "",
     least_represented_traits_q3: [],
@@ -42,10 +42,11 @@ export default function QuizClient() {
     selected_image_q8: "",
     least_represented_images_q9: [],
     selected_modes_q10: [],
-    location: "No Preference",
-    collegeType: "No Preference",
-    collegeSize: "7,501+",
-    state: "Iowa",
+    // UPDATED to require selection
+    location: "",
+    collegeType: "",
+    collegeSize: "",
+    state: "",
   });
 
   const [shuffledData, setShuffledData] = useState({
@@ -162,7 +163,6 @@ export default function QuizClient() {
     { key: "selected_image_q8", title: "Which of those 3 is most like you?", type: "image-radio", options: answers.selected_images_q7, max: 1 },
     { key: "least_represented_images_q9", title: "Select 3 icons that least represent you.", type: "image-checkbox", options: remQ9, max: 3 },
     { key: "selected_modes_q10", title: "Which two 'Modes of Connection'?", type: "checkbox", options: shuffledData.modesOfConnection, max: 2 },
-    // ADDED NAME AND EMAIL QUESTIONS
     { key: "full_name", title: "What is your full name?", type: "text", max: 1 },
     { key: "email", title: "What is your email address?", type: "email", max: 1 },
     { key: "location", title: "Where would you like to attend college?", type: "radio", options: collegeLocations, max: 1 },
