@@ -12,37 +12,27 @@ interface ResultsProps {
 export default function Results({ result, collegeMatches }: ResultsProps) {
   useEffect(() => {
     const submitResults = async () => {
-      if (!result) return; // Add a guard clause
+      if (!result) return;
 
       try {
-        console.log("Submitting answers:", result.answers); // For debugging
-        
-        const response = await fetch("/api/submit", {
+        await fetch("/api/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          // FIX: Changed 'results.answers' to 'result.answers'
           body: JSON.stringify({ answers: result.answers }),
         });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error("Failed to submit results:", errorData.error);
-        } else {
-          console.log("Results submitted successfully!");
-        }
       } catch (error) {
         console.error("An error occurred during submission:", error);
       }
     };
 
     submitResults();
-  // FIX: Changed dependency from 'results' to 'result'
   }, [result]);
 
   const personaDescription =
     result.persona.description || motivatorDescriptions[result.winner];
 
   return (
+    // FIX: Added card styling classes to this div
     <div className="w-full max-w-4xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl text-center">
       <h1 className="text-4xl font-bold text-cx-dark-blue mb-4">
         Your Results
